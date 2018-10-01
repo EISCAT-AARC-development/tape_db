@@ -1,0 +1,168 @@
+README for tape/raid Database
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MySQL is used and the main database is currently running on arch.
+The database is called 'tape_archive' and consists of three tables,
+linked together with id numbers.
+
+tape_archive (database)
+|- experiments (table)
+|  |- experiment_name (the official name without the @uhf part)
+|  |- antenna         (three-letter code for antenna)
+|  |- country         (two-letter country code or NULL if unknown)
+|  `- experiment_id   (unique positive integer)
+|- resource (table)
+|  |- experiment_id   (to which experiment this resource belongs)
+|  |- type            ('data' or 'info')
+|  |- start           (start time (UTC))
+|  |- end             (end time (UTC). zero means valid until next record)
+|  `- resource_id     (unique positive integer for resources)
+|- storage (table)
+|  |- resource_id     (which resource this storage provides)
+|  `- location        (url describing the location. see below for examples)
+`- tape_comments (table, contains the label of the tapes)
+   |- tape_nr
+   `- comment
+
+A location is an URL that can for example be:
+	eiscat-tape://952206/.tau0l_fixed_42m_5.10_CP@42m/20040603_06
+	eiscat-raid://deposit/mnt/raid2/2004/tau0l_fixed_42m_5.10_CP@42m/20040603_06
+	http://***REMOVED***.tjottaheiki.fi/langtbartistan/20040603_06.tgz
+
+    tapelib.{create|parse}_{tape|raid}url() can be used to pack or unpack these.
+
+The exact database table layout can be found in the top of tapelib.py
+tapelib.py also contains numerous functions to simplify and abstract
+the interface to the database. Programs written in python should use
+it as the interface.
+
+INSERTING DATA
+~~~~~~~~~~~~~~
+Several frontends (methods of inserting data) are written to handle different
+types of data.
+
+1. Directories (index_directories.py)
+
+Directories in the standard (as of 2004) format can be imported with
+
+   ./index_directories.py add /mnt/raid1/new/*
+
+if the directores are scattered in many subdirectories,
+this command will traverse the whole tree (a bit slower):
+
+   ./index_directories.py spider /mnt/raid1/
+
+1.1. Convert data to the standard format.
+
+ral-type (year/date/*.tar.gz) can be "downloaded" by the ***REMOVED*** and
+on-the-fly converted to the standard format.
+
+Old information directories with source/ and fir/ are also converted by
+the ***REMOVED***, but can also be fixed by running
+
+    ./index_directories.py fix_old /mnt/raid1
+
+Uncompressed .mat files can be compressed with:
+
+    find /mnt/raid1 -name '*.mat' -size +64k -exec bzip2 -9 {} \;
+
+2. Tapes
+
+The tapes are added by a set of ugly scripts at
+eiscathq:~chn/tape_archive/tape_db/
+which downloads the text-based tape archive from Tromso every night.
+Future work should try a different approach
+
+3. Your-own-format
+
+Write a script and add it to the repository. Simple
+
+MODIFYING THE DATABASE
+~~~~~~~~~~~~~~~~~~~~~~
+If you need more metadata in the database, just add them in the
+top of tapelib.py, and then run:
+
+   python tapelib.py alter
+
+DATABASE BACKUPS
+~~~~~~~~~~~~~~~~
+can be done by running the shell script ./make_backup, preferably from a
+cron script. Remeber to change the path. The script also deletes old backups,
+keeping the disk usage constant. Instructions for recovering a database from
+a backup is also mentioned in make_backup.
+
+SPECIAL CASES/COMMON PITFALLS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. The database have to be run with timezone set to UTC! Adding --timezone UTC
+   to mysqld_safe fixed it on eiscathq. The python scripts should work
+   independent of timezone because of the timegm/gmtime usage, but it is not
+   really tested.
+    "python tapelib.py check" will die if the timezone is wrong.
+2. In the tape database the start time is calculated wrong. The integration time
+   is not subtracted from the end time. The tapelib.update() function works
+   around this and therefore this functions should always be used when adding
+   an experiment.
+3. The tape database truncated the time to earliest second, but my
+   index_directories.py rounds it to nearest second. As a result of this, the
+   tapelib.update() function permits small variations in the times when matching
+   resources.
+4. Experiments with corrupt .mat-files (very common for tar to fail on the last
+   file) will not be indexed by index_directories.py. Someone have to fix it.
+   A list of broken directories can be created by:
+
+    ./index_directories.py spider_try /mnt/raid1 | grep Unknown
+
+FAQ
+~~~
+Q. Something went wrong when I added data and I want to remove it and start
+   over. How do I do that?
+A. If the data is idenfifiable by experiment name, antenna or filename, you can
+   use one of these commands:
+
+    python tapelib.py remove_experiment scinti_%_err
+	python tapelib.py remove_antennas 1%
+	./index_directories.py remove /mnt/raid1/incoming/
+	python tapelib.py remove_urls eiscat-raid://%/mnt/raid1/incoming/%
+
+Q. How do I rebuild the whole thing from scratch?
+A. To recreate the database and rebuild it, do:
+    python tapelib.py create
+	./index_directories.py add /mnt/raid2/*/*
+
+Q. tapelib.py is too complex for me to understand!!
+A. That's life when you have to do the dirty work :) No, really, I tried to
+   make it simple, but it turned out to be a bit too much of workarounds
+   and special cases...
+
+WEB INTERFACE
+~~~~~~~~~~~~~
+schedule/schedule.cgi and schedule/tape2.cgi now makes use of the new database.
+The database at eiscathq is rebuilt every day from the main database at arch,
+by running eiscathq:~chn/tape_archive/tape_db/cron_merge_arch from cron.
+
+Ability to download one year old data will I hopefully finish soon.
+
+SECURITY
+~~~~~~~~
+The mysql databases are configured to only accept connections from localhost.
+Three users are configured.
+root     - access to everything, protected with a secret password
+***REMOVED*** - read/write access to tape_archive database with public password in
+           cleartext in the scripts.
+***REMOVED***      - read access to tape_archive without password. Should be used to
+           prevent unintended deletions.
+
+Whenever a remote database needs to be connected to, a tunnel is set up
+with ssh portforwarding. This is done automatically by tapelib.openMySQL_SSH().
+However, this means that anyone on that host could use the same tunnel.
+Everyone with an account on eiscathq could potentially modify the database.
+
+FUTURE WORK
+~~~~~~~~~~~
+Use sql-relay or some replication sql servers to gain better performance at
+the web interface end.
+
+Use the GRID infrastructure to share the data and get security for free.
+
+ME
+~~
+Christian Häggström, c00chm@cs.umu.se
