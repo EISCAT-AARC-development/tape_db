@@ -427,16 +427,16 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
 
 def openmaster():
 	if nodename() in ("data1","eiscathq"):
-		return openMySQL(host="eiscathq",passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
+		return openMySQL(host="192.168.11.5",passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
 	else:
 		#return openMySQL_SSH("archive@eiscathq", passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
 		raise
 
 def opendefault():
-	if nodename() in ("eiscathq"):
+	if nodename() in ("eiscathq","portal"):
 		return openMySQL(host="localhost",db='***REMOVED***',user='***REMOVED***')
 	elif nodename() in ("data1"):
-		return openMySQL(host="eiscathq",db='***REMOVED***',user='***REMOVED***')
+		return openMySQL(host="192.168.11.5",db='***REMOVED***',user='***REMOVED***')
 	else:
 		raise
 
@@ -448,7 +448,7 @@ def nodename():
 	if not _cached_nodename:
 		import os
 		nodename = os.uname()[1]
-		nodename = 'data1'
+		# nodename = 'data1'
 		_cached_nodename = nodename.split('.')[0]
 	return _cached_nodename
 

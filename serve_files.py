@@ -12,7 +12,7 @@ import os, sys, cgi
 
 import tapelib
 
-portno = 37378
+portno = 37009
 
 if len(sys.argv)>1:
 	portno=int(sys.argv[1])
@@ -243,10 +243,10 @@ def run_from_inetd():
 def run_as_server():
 	server_address = ('', portno)
 	httpd = ThreadedHTTPServer(server_address, ReqHandler)
-	if portno == 37379:
+	if portno == 37009:
 		import ssl
-		sslcontext=ssl.create_default_context(cafile="/etc/ssl/certs/DigiCertCA.crt",purpose=ssl.Purpose.CLIENT_AUTH)
-		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/dd1_eiscat_se.crt",keyfile="/etc/ssl/certs/dd1_eiscat_se.key")
+		sslcontext=ssl.create_default_context(cafile="/etc/ssl/certs/ssl-cert-snakeoil.pem",purpose=ssl.Purpose.CLIENT_AUTH)
+		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/ssl-cert-snakeoil.pem",keyfile="/etc/ssl/private/ssl-cert-snakeoil.key")
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
 	httpd.serve_forever()
 
