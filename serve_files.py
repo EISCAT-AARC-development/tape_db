@@ -133,7 +133,8 @@ def GETorHEAD(self):
 		sql = tapelib.opendefault()
 		if paths[0][1:].isdigit():
 			path=[]
-			machine=tapelib.nodename()
+			# machine=tapelib.nodename()
+                        machine = 'data1' # always this name in SQL entries
 			for id in paths:
 				cmd="SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'"%(id[1:], machine)
 				sql.cur.execute(cmd)
@@ -144,7 +145,10 @@ def GETorHEAD(self):
 		try:
 			try:
 				for path in paths:
-					url = tapelib.create_raidurl(tapelib.nodename(), path)
+					#url = tapelib.create_raidurl(tapelib.nodename(), path)
+                                        
+					url = tapelib.create_raidurl('data1', path)
+					l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
 					l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
 					assert permitted(ip, (l.account or l.country), l.date, l.type)
 			except AssertionError:
