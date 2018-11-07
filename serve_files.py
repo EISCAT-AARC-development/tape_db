@@ -245,8 +245,8 @@ def run_as_server():
 	httpd = ThreadedHTTPServer(server_address, ReqHandler)
 	if portno == 37009:
 		import ssl
-                # This won't work, we need valid certificates
-		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTHcafile=...) # insert CA certificate path here
+                # Todo: valid certificates needed
+		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH,cafile="/etc/ssl/certs/ssl-cert-snakeoil.pem") # insert path to proper CA
 		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/ssl-cert-snakeoil.pem",keyfile="/etc/ssl/private/ssl-cert-snakeoil.key") # insert paths to valid cert and key
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
 	httpd.serve_forever()
