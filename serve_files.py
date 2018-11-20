@@ -8,97 +8,57 @@
 # source to fetch from.
 # format is tar, tgz or zip
 
-import os, sys, cgi
-
-import tapelib
+import os, sys, time, tapelib, csv
 
 portno = 37009
 
 if len(sys.argv)>1:
 	portno=int(sys.argv[1])
 
-HQ = "127.0.0.0/8 193.11.31.253/32 192.168.10.0/23 10.0.8.0/24"
-TRO= "129.242.31.0/25"
-ESR= "158.39.70.0/26 158.39.70.220/32"
-KIR= "193.10.33.64/27 193.10.33.96/28"
-SOD= "193.167.134.192/27"
-permitted_ips = HQ+" "+TRO+" "+ESR+" "+KIR+" 1.1.1.1/32"
-einfra_ips = "146.48.0.0/16/CNR"
-affiliate_ips = "193.48.8.59/32/FR/2018 203.250.178.0/23/KR/2018"
-blacklist = ""
-
 def permitted(ip, country, date, type):
-	owners='UK NI NO SW FI CN'
-	common='CP UP AA IPY'
-	if not country:	country='?'
-	# check for ip numbers - taken from Madrigal trustedIPs.txt
-	ip32=0
-	for ippart in ip.split('.'): ip32=ip32*256+int(ippart)
-	for known in permitted_ips.split():
-		net,mask=known.split('/')
-		net32=0
-		for ippart in net.split('.'): net32=net32*256+int(ippart)
-		if (ip32-net32)>>(32-int(mask)) == 0: return True
-	for known in blacklist.split():
-		net,mask=known.split('/')
-		net32=0
-		for ippart in net.split('.'): net32=net32*256+int(ippart)
-		if (ip32-net32)>>(32-int(mask)) == 0: return False
-	import time
-	for known in einfra_ips.split():
-		net,mask,eri=known.split('/')
-		net32=0
-		for ippart in net.split('.'): net32=net32*256+int(ippart)
-		if (ip32-net32)>>(32-int(mask)) == 0 and time.time()>date+86400*(4*365+1): return True
-	yr=time.gmtime().tm_year
-	for known in affiliate_ips.split():
-		net,mask,affiliate,year=known.split('/')
-		net32=0
-		for ippart in net.split('.'): net32=net32*256+int(ippart)
-		if (ip32-net32)>>(32-int(mask)) == 0 and int(year) == yr:
-			owners=owners+" "+affiliate
-	import socket
-	try:
-		host,dd,d= socket.gethostbyaddr(ip)
-		host=host.split('.')[-1]
-		if len(host)>2: raise socket.error
-	except socket.error:
-		try:
-			#No hostname found or not two letter country, try with whois
-			#wserv='countries.blackholes.us'
-			wserv='zz.countries.nerd.dk'
-			import commands
-			pi=ip.split('.')
-			host=commands.getoutput('nslookup -q=txt '+pi[3]+'.'+pi[2]+'.'+pi[1]+'.'+pi[0]+'.'+wserv+' | grep text').split('"')[1]
-		except:
-			return False
+	owners = 'UK NI NO SW FI CN'
+	common = 'CP UP AA IPY'
 
-        # Domain to EISCAT country code used in SQL  DB.
-        # ge is Georgia, ni is Nicaragua. Block.
-        if host=='ge': return False                
-        if host=='ni': return False
-        #  EISCAT codes differ for Germany, Sweden, Japan
-	if host=='de': host='ge'
-	if host=='se': host='sw'
-	if host=='jp': host='ni'
+	epuid = os.environ['eduPersonUniqueID']
+	tld = epuid.split('.')[-1]
 
-	host=host.upper()
-	if type=='info':
+	# Domain to EISCAT country code used in SQL  DB.
+	# ge is Georgia, ni is Nicaragua. Block.
+	if tld == 'ge': return False
+	if tld == 'ni': return False
+	#  EISCAT codes differ for Germany, Sweden, Japan
+	if tld == 'de': tld = 'ge'
+	if tld == 'se': tld = 'sw'
+	if tld == 'jp': tld = 'ni'
+
+	institutes = {line[0]: line[1] for line in csv.reader(open("institutes.csv", "rb"))}
+	persons = {line[0]: line[1] for line in csv.reader(open("persons.csv", "rb"))}
+
+	if epuid.split('@')[-1] in institutes.keys():
+		tld = institutes[epuid]
+	elif epuid in persons.keys():
+		tld = persons[epuid]
+
+	tld = tld.upper()
+
+	if type == 'info':
 		# any country can download exp files
 		return True
-	elif host in country:
+	elif tld in country.upper():
 		# any country can download own data
 		return True
-	elif host in owners:
+	elif tld in owners:
 		# EISCAT countries can download old data
-		if time.time()>date+86400*366: return True
+		if time.time() > date + 86400 * 366:
+			return True
+
 		# EISCAT countries can download recent CP (UP. AA) data
-		for cp in common.split():
-			if cp in country: return True
-	elif host=='NL' and (yr>2006 and yr<2009):
-		# egi can download IPY data
-		return True
-	return False
+		# Country should be type?
+		# if type in common:
+		if country in common.split(' '):
+			return True
+	else:
+		return False
 
 from BaseHTTPServer import *
 import SocketServer
@@ -245,9 +205,10 @@ def run_as_server():
 	httpd = ThreadedHTTPServer(server_address, ReqHandler)
 	if portno == 37009:
 		import ssl
-                # This won't work, we need valid certificates
-		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTHcafile=...) # insert CA certificate path here
-		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/ssl-cert-snakeoil.pem",keyfile="/etc/ssl/private/ssl-cert-snakeoil.key") # insert paths to valid cert and key
+
+		# This won't work, we need valid certificates
+		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTHk, cafile='') # insert CA certificate path here
+		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/ssl-cert-snakeoil.pem", keyfile="/etc/ssl/private/ssl-cert-snakeoil.key") # insert paths to valid cert and key
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
 	httpd.serve_forever()
 
