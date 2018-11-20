@@ -8,57 +8,15 @@
 # source to fetch from.
 # format is tar, tgz or zip
 
-import os, sys, time, tapelib, csv
+import os
+import sys
+import tapelib
+from eiscat_auth import download_authz
 
 portno = 37009
 
 if len(sys.argv)>1:
 	portno=int(sys.argv[1])
-
-def permitted(ip, country, date, type):
-	owners = 'UK NI NO SW FI CN'
-	common = 'CP UP AA IPY'
-
-	epuid = os.environ['eduPersonUniqueID']
-	tld = epuid.split('.')[-1]
-
-	# Domain to EISCAT country code used in SQL  DB.
-	# ge is Georgia, ni is Nicaragua. Block.
-	if tld == 'ge': return False
-	if tld == 'ni': return False
-	#  EISCAT codes differ for Germany, Sweden, Japan
-	if tld == 'de': tld = 'ge'
-	if tld == 'se': tld = 'sw'
-	if tld == 'jp': tld = 'ni'
-
-	institutes = {line[0]: line[1] for line in csv.reader(open("institutes.csv", "rb"))}
-	persons = {line[0]: line[1] for line in csv.reader(open("persons.csv", "rb"))}
-
-	if epuid.split('@')[-1] in institutes.keys():
-		tld = institutes[epuid]
-	elif epuid in persons.keys():
-		tld = persons[epuid]
-
-	tld = tld.upper()
-
-	if type == 'info':
-		# any country can download exp files
-		return True
-	elif tld in country.upper():
-		# any country can download own data
-		return True
-	elif tld in owners:
-		# EISCAT countries can download old data
-		if time.time() > date + 86400 * 366:
-			return True
-
-		# EISCAT countries can download recent CP (UP. AA) data
-		# Country should be type?
-		# if type in common:
-		if country in common.split(' '):
-			return True
-	else:
-		return False
 
 from BaseHTTPServer import *
 import SocketServer
@@ -106,7 +64,7 @@ def GETorHEAD(self):
 				for path in paths:
 					url = tapelib.create_raidurl(tapelib.nodename(), path)
 					l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
-					assert permitted(ip, (l.account or l.country), l.date, l.type)
+					assert download_authz(ip, (l.account or l.country), l.date, l.type)
 			except AssertionError:
 				print >> sys.stderr, "Bad IP:", ip, (l.account or l.country)
 			finally:
