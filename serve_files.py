@@ -12,6 +12,7 @@ import os
 import sys
 import tapelib
 from eiscat_auth import download_authz
+from token_url_utility import ExtendedUrl
 
 portno = 37009
 
@@ -20,6 +21,10 @@ if len(sys.argv)>1:
 
 from BaseHTTPServer import *
 import SocketServer
+
+portal_public_key_path = '/var/***REMOVED***/auth/public_key.pem' 
+
+portal_public_key = open(portal_public_key_path,'r').read()
 
 def GETorHEAD(self):
 		# self.path and self.client_address
@@ -36,7 +41,17 @@ def GETorHEAD(self):
 			print >> self.wfile, '<meta http-equiv="Refresh" content="9;url=javascript:history.go(-1)">'
 			print >> self.wfile, ip, "has reached maximum number of parallel streams"
 			return
-		req = self.path
+
+		# retrived decoded url here
+
+		ext_url = ExtendedUrl(self.path)
+		
+		try:
+			claims = ext_url.get_claims(portal_public_key)
+		except Exception as e:
+			print e
+		ext_url.remove_token_from_url()
+		req = '/' + str(ext_url.path)
 		req, fname = os.path.split(req)
 		format = os.path.splitext(fname)[1][1:]
 
@@ -165,7 +180,7 @@ def run_as_server():
 		import ssl
 
 		# This won't work, we need valid certificates
-		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTHk, cafile='') # insert CA certificate path here
+		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile='') # insert CA certificate path here
 		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/ssl-cert-snakeoil.pem", keyfile="/etc/ssl/private/ssl-cert-snakeoil.key") # insert paths to valid cert and key
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
 	httpd.serve_forever()
