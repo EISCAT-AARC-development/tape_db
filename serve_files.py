@@ -22,9 +22,14 @@ if len(sys.argv)>1:
 from BaseHTTPServer import *
 import SocketServer
 
-portal_public_key_path = '/var/www/auth/public_key.pem' 
+token_signing_pub_key_path = os.environ["TOKEN_SIGNING_PUB_KEY_PATH"]
 
-portal_public_key = open(portal_public_key_path,'r').read()
+data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
+
+data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"] 
+
+token_signing_pub_key = open(token_signing_pub_key_path,'r').read()
+
 
 def GETorHEAD(self):
 		# self.path and self.client_address
@@ -47,11 +52,15 @@ def GETorHEAD(self):
 		ext_url = ExtendedUrl(self.path)
 		
 		try:
-			claims = ext_url.get_claims(portal_public_key)
+			claims = ext_url.get_claims(token_signing_pub_key)
 		except Exception as e:
 			print e
 		ext_url.remove_token_from_url()
 		req = '/' + str(ext_url.path)
+		
+		print 'token validated correctly'
+		print 'requested resource: ' + req
+
 		req, fname = os.path.split(req)
 		format = os.path.splitext(fname)[1][1:]
 
@@ -178,10 +187,8 @@ def run_as_server():
 	httpd = ThreadedHTTPServer(server_address, ReqHandler)
 	if portno == 37009:
 		import ssl
-
-		# This won't work, we need valid certificates
-		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile='') # insert CA certificate path here
-		sslcontext.load_cert_chain(certfile="/etc/ssl/certs/ssl-cert-snakeoil.pem", keyfile="/etc/ssl/private/ssl-cert-snakeoil.key") # insert paths to valid cert and key
+		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+		sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
 	httpd.serve_forever()
 
