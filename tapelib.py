@@ -426,31 +426,35 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
 	return conn
 
 def openmaster():
-	if nodename() in ("data1","eiscathq"):
+        if nodename() in ("data1","eiscathq"):
 		return openMySQL(host="192.168.11.5",passwd='ks902jf4',db='disk_archive',user='archiver')
 	else:
 		#return openMySQL_SSH("archive@eiscathq", passwd='ks902jf4',db='disk_archive',user='archiver')
 		raise
 
 def opendefault():
-	if nodename() in ("eiscathq","portal"):
-		return openMySQL(host="localhost",db='disk_archive',user='www')
-	elif nodename() in ("data1"):
-		return openMySQL(host="192.168.11.5",db='disk_archive',user='www')
-	else:
-		raise
+        # TODO: development hack, replace with original code 
+        #if nodename() in ("eiscathq","portal"):
+	return openMySQL(host="localhost",db='disk_archive',user='www')
+	#elif nodename() in ("data1"):
+	#	return openMySQL(host="192.168.11.5",db='disk_archive',user='www')
+	#else:
+	#	raise
 
 ############# URL handling routines ########################
 _cached_nodename = None
 def nodename():
 	"""return a name for localhost, to be used in URLs"""
-	global _cached_nodename
-	if not _cached_nodename:
-		import os
-		nodename = os.uname()[1]
-		# nodename = 'data1'
-		_cached_nodename = nodename.split('.')[0]
-	return _cached_nodename
+        # TODO: developement hack: replace with actual hostname
+        return "data1"
+        
+#        global _cached_nodename
+#	if not _cached_nodename:
+#		import os
+#		nodename = os.uname()[1]
+#		# nodename = 'data1'
+#		_cached_nodename = nodename.split('.')[0]
+#	return _cached_nodename
 
 # Grr, have to add these. I thought urlparse always used http-style
 import urlparse
