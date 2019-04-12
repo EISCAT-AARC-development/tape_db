@@ -11,7 +11,6 @@
 import os
 import sys
 import tapelib
-from eiscat_auth import download_authz
 from token_url_utility import ExtendedUrl
 
 portno = 37009
@@ -88,7 +87,8 @@ def GETorHEAD(self):
 				for path in paths:
 					url = tapelib.create_raidurl(tapelib.nodename(), path)
 					l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
-					assert download_authz(ip, (l.account or l.country), l.date, l.type)
+					# All the check are performed in token validatio# All the check are performed in token validation
+                                        #assert download_authz(ip, (l.account or l.country), l.date, l.type)
 			except AssertionError:
 				print >> sys.stderr, "Bad IP:", ip, (l.account or l.country)
 			finally:
