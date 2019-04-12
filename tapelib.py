@@ -3,6 +3,7 @@
 
 # warning filter CFE 20160126
 import warnings
+import os
 
 tape_tables = {
 'experiments': '''
@@ -433,9 +434,8 @@ def openmaster():
 		raise
 
 def opendefault():
-        # TODO: development hack, replace with original code 
         #if nodename() in ("eiscathq","portal"):
-	return openMySQL(host="localhost",db='***REMOVED***',user='***REMOVED***')
+	return openMySQL(host=os.environ['MYSQL_HOST'],db='***REMOVED***',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
 	#elif nodename() in ("data1"):
 	#	return openMySQL(host="192.168.11.5",db='***REMOVED***',user='***REMOVED***')
 	#else:
