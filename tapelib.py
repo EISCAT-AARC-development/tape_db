@@ -430,22 +430,25 @@ def openmaster():
         if nodename() in ("data1","eiscathq"):
 		return openMySQL(host="192.168.11.5",passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
 	else:
-		#return openMySQL_SSH("archive@eiscathq", passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
+                # CFE: open the local slave here on LXC data.eiscat.se. Fixme; add proper check
+		return openMySQL(host="localhost", passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
 		raise
 
 def opendefault():
         #if nodename() in ("eiscathq","portal"):
-	return openMySQL(host=os.environ['MYSQL_HOST'],db='***REMOVED***',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
+	#return openMySQL(host=os.environ['MYSQL_HOST'],db='***REMOVED***',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
 	#elif nodename() in ("data1"):
 	#	return openMySQL(host="192.168.11.5",db='***REMOVED***',user='***REMOVED***')
 	#else:
-	#	raise
+	#raise
+        # CFE: quick change to use local slave here on LXC data.eiscat.se
+        return openMySQL(host="localhost",db='***REMOVED***',user='***REMOVED***')
 
 ############# URL handling routines ########################
 _cached_nodename = None
 def nodename():
-	"""return a name for localhost, to be used in URLs"""
-        # TODO: developement hack: replace with actual hostname
+	"""return a name to be used in URLs"""
+        # FIXME
         return "data1"
         
 #        global _cached_nodename
