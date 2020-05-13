@@ -11,6 +11,8 @@
 import os
 import sys
 import tapelib
+# CFE: find this
+sys.path.append("/home/archive/shared-auth")
 from token_url_utility import ExtendedUrl
 
 portno = 37009
@@ -22,30 +24,29 @@ from BaseHTTPServer import *
 import SocketServer
 
 token_signing_pub_key_path = os.environ["TOKEN_SIGNING_PUB_KEY_PATH"]
-
+data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
+data_server_ssl_ca_file = os.environ["DATA_SERVER_SSL_CA_FILE"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
-
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"] 
-
 token_signing_pub_key = open(token_signing_pub_key_path,'r').read()
-
 
 def GETorHEAD(self):
 		# self.path and self.client_address
-		import socket, subprocess
+		import socket
+                import subprocess
 		ip = socket.gethostbyname(self.client_address[0])
 		# Maximum 9 connections
 		netst='netstat -nt | grep %d | grep ESTABLISHED | grep %s | wc -l'%(portno,ip)
 		#netst='netstat -n | grep %d | grep %s | wc -l'%(portno,ip)
 		nconn=subprocess.Popen(['bash','-c',netst], stdout=subprocess.PIPE).communicate()[0]
 		if ip != "192.168.11.6" and int(nconn)>9:
-			print >> sys.stderr, "Too many connections:", ip
-			self.send_header("Content-type", "text/html")
-			self.end_headers()
-			print >> self.wfile, '<meta http-equiv="Refresh" content="9;url=javascript:history.go(-1)">'
-			print >> self.wfile, ip, "has reached maximum number of parallel streams"
-			return
-
+		 	print >> sys.stderr, "Too many connections:", ip
+		 	self.send_header("Content-type", "text/html")
+		 	self.end_headers()
+		 	print >> self.wfile, '<meta http-equiv="Refresh" content="9;url=javascript:history.go(-1)">'
+		 	print >> self.wfile, ip, "has reached maximum number of parallel streams"
+		 	return
+                
 		# retrived decoded url here
 
 		ext_url = ExtendedUrl(self.path)
@@ -74,9 +75,9 @@ def GETorHEAD(self):
 		sql = tapelib.opendefault()
 		if paths[0][1:].isdigit():
 			path=[]
-			machine=tapelib.nodename()
+			machine=tapelib.nodename() #Checkme: returns "data1" for now
 			for id in paths:
-				cmd="SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'"%(id[1:], machine)
+				cmd="SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'"%(id[1:],machine)
 				sql.cur.execute(cmd)
 				ls=sql.cur.fetchall()[0][0]
 				m, path1 ,f= tapelib.parse_raidurl(ls)
@@ -87,7 +88,8 @@ def GETorHEAD(self):
 				for path in paths:
 					url = tapelib.create_raidurl(tapelib.nodename(), path)
 					l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
-					# All the check are performed in token validatio# All the check are performed in token validation
+                                        print l
+					# All the checks are performed in token validation
                                         #assert download_authz(ip, (l.account or l.country), l.date, l.type)
 			except AssertionError:
 				print >> sys.stderr, "Bad IP:", ip, (l.account or l.country)
@@ -127,7 +129,7 @@ class ReqHandler(BaseHTTPRequestHandler):
 	def do_HEAD(self):
 		GETorHEAD(self)
 
-from SocketServer import BaseServer
+from SocketServer import BaseServer, ThreadingMixIn
 
 class InetdHTTPServer(BaseServer):
 	def __init__(self, requestHandler):
@@ -142,9 +144,10 @@ class InetdHTTPServer(BaseServer):
 			peer = ('127.0.0.1', 0)
 		return s, peer
 
-class ThreadedHTTPServer(SocketServer.ThreadingMixIn, HTTPServer):
-	def handle_error(self, request, client_address):
-		print('ERROR:', client_address)
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+        """ This handles each request in a separate thread """
+	#def handle_error(self, request, client_address):
+	#	print ('ERROR:', client_address)
 
 def arcname(path):
 	return '/'.join(path.split('/')[-2:])
@@ -186,10 +189,13 @@ def run_as_server():
 	server_address = ('', portno)
 	httpd = ThreadedHTTPServer(server_address, ReqHandler)
 	if portno == 37009:
+                print "Enabling SSL"
 		import ssl
-		sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+                 # sslcontext=ssl.create_default_context(capath=data_server_ssl_ca_path,cafile=data_server_ssl_ca_file,purpose=ssl.Purpose.CLIENT_AUTH)
+                sslcontext=ssl.create_default_context(capath=data_server_ssl_ca_path,purpose=ssl.Purpose.CLIENT_AUTH)
 		sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
+        print 'Starting server on port %i' % portno 
 	httpd.serve_forever()
 
 def testzipper(path):
