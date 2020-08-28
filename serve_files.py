@@ -24,8 +24,8 @@ from BaseHTTPServer import *
 import SocketServer
 
 token_signing_pub_key_path = os.environ["TOKEN_SIGNING_PUB_KEY_PATH"]
-data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
-data_server_ssl_ca_file = os.environ["DATA_SERVER_SSL_CA_FILE"]
+# data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
+# data_server_ssl_ca_file = os.environ["DATA_SERVER_SSL_CA_FILE"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"] 
 token_signing_pub_key = open(token_signing_pub_key_path,'r').read()
@@ -192,7 +192,7 @@ def run_as_server():
                 print "Enabling SSL"
 		import ssl
                  # sslcontext=ssl.create_default_context(capath=data_server_ssl_ca_path,cafile=data_server_ssl_ca_file,purpose=ssl.Purpose.CLIENT_AUTH)
-                sslcontext=ssl.create_default_context(capath=data_server_ssl_ca_path,purpose=ssl.Purpose.CLIENT_AUTH)
+                sslcontext=ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
 		sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
 		httpd.socket=sslcontext.wrap_socket(httpd.socket, server_side=True)
         print 'Starting server on port %i' % portno 

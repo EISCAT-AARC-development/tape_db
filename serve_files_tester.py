@@ -10,8 +10,8 @@ from SocketServer import BaseServer
 import shutil
 
 portno = 37009
-certfile="/var/***REMOVED***/auth/public_key.pem"
-keyfile="/var/***REMOVED***/auth/private_key.pem"
+certfile="/var/www/auth/public_key.pem"
+keyfile="/var/www/auth/private_key.pem"
 
 FILEPATH = "/tmp/tau1r_cp3_1.30_CP20070302.tar"
 

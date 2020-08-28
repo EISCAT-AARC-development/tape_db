@@ -88,7 +88,7 @@ class Conn:
 			else:
 				l.append(key+" = %s")
 		sql += " AND ".join(l)
-		sql = "SELECT * FROM "+table+" WHERE " + sql + " UNION SELECT * FROM ***REMOVED***."+table+" WHERE " + sql
+		sql = "SELECT * FROM "+table+" WHERE " + sql + " UNION SELECT * FROM tape_archive_tapes."+table+" WHERE " + sql
 		return self.select_sql(sql, kwords.values()+kwords.values(), limit=limit)
 
 	def select(self, table, limit=None, **kwords):
@@ -103,11 +103,11 @@ class Conn:
 		return self.select_sql(sql, kwords.values(), limit=limit)
 
 	def select_experiment_resource_union(self, query, values=(), what="*", limit=None):
-		sql = "SELECT "+what+" FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND "+query+ " UNION SELECT "+what+" FROM ***REMOVED***.experiments, ***REMOVED***.resource WHERE experiments.experiment_id = resource.experiment_id AND "+query
+		sql = "SELECT "+what+" FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND "+query+ " UNION SELECT "+what+" FROM tape_archive_tapes.experiments, tape_archive_tapes.resource WHERE experiments.experiment_id = resource.experiment_id AND "+query
 		return self.select_sql(sql, values+values, limit=limit)
 
 	def select_experiment_storage_union(self, query, values=(), what="*", limit=None):
-		sql = "SELECT "+what+" FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query+"UNION SELECT "+what+" FROM ***REMOVED***.experiments, ***REMOVED***.resource, ***REMOVED***.storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query
+		sql = "SELECT "+what+" FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query+"UNION SELECT "+what+" FROM tape_archive_tapes.experiments, tape_archive_tapes.resource, tape_archive_tapes.storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query
 		return self.select_sql(sql, values+values, limit=limit)
 
 	def select_experiment_resource(self, query, values=(), what="*", limit=None):
@@ -341,7 +341,7 @@ class Conn:
 			sub("resource", "storage", "resource_id")
 
 	def select_union_resource(self, experiment_id, start, end, limit=None):
-		return self.select_resource(experiment_id, start, end, "", limit)+self.select_resource(experiment_id, start, end, "***REMOVED***", limit)
+		return self.select_resource(experiment_id, start, end, "", limit)+self.select_resource(experiment_id, start, end, "tape_archive_tapes", limit)
 
 	def select_resource(self, experiment_id, start, end, db=None, limit=None):
 
@@ -428,21 +428,21 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
 
 def openmaster():
         if nodename() in ("data1","eiscathq"):
-		return openMySQL(host="192.168.11.5",passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
+		return openMySQL(host="192.168.11.5",passwd='ks902jf4',db='disk_archive',user='archiver')
 	else:
                 # CFE: open the local slave here on LXC data.eiscat.se. Fixme; add proper check
-		return openMySQL(host="localhost", passwd='***REMOVED***',db='***REMOVED***',user='***REMOVED***')
+		return openMySQL(host="localhost", passwd='ks902jf4',db='disk_archive',user='archiver')
 		raise
 
 def opendefault():
         #if nodename() in ("eiscathq","portal"):
-	#return openMySQL(host=os.environ['MYSQL_HOST'],db='***REMOVED***',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
+	#return openMySQL(host=os.environ['MYSQL_HOST'],db='disk_archive',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
 	#elif nodename() in ("data1"):
-	#	return openMySQL(host="192.168.11.5",db='***REMOVED***',user='***REMOVED***')
+	#	return openMySQL(host="192.168.11.5",db='disk_archive',user='www')
 	#else:
 	#raise
         # CFE: quick change to use local slave here on LXC data.eiscat.se
-        return openMySQL(host="localhost",db='***REMOVED***',user='***REMOVED***')
+        return openMySQL(host="localhost",db='disk_archive',user='www')
 
 ############# URL handling routines ########################
 _cached_nodename = None
@@ -582,13 +582,13 @@ if __name__ == '__main__':
 	if cmd=='create':
 		import getpass
 		p = getpass.getpass("admin passwd: ")
-		c = openMySQL(passwd=p, db='***REMOVED***',user='root')
+		c = openMySQL(passwd=p, db='disk_archive',user='root')
 		c.create()
 		c.close()
 	elif cmd=='alter':
 		import getpass
 		p = getpass.getpass("admin passwd: ")
-		c = openMySQL(passwd=p, db='***REMOVED***',user='root')
+		c = openMySQL(passwd=p, db='disk_archive',user='root')
 		c.alter()
 		c.close()
 	elif cmd=='clean':
@@ -671,7 +671,7 @@ if __name__ == '__main__':
 						print("    "+s.location+" (%s bytes)"%s.bytes)
 	#elif cmd=='merge':
 	#	local = opendefault()
-	#	remote = openMySQL_SSH("archive@arch.eiscat.irf.se", db='tape_archive',user='***REMOVED***',interactive=1)
+	#	remote = openMySQL_SSH("archive@arch.eiscat.irf.se", db='tape_archive',user='www',interactive=1)
 	#	merge(local, remote, verbose=1)
 	elif cmd=='fix':
 		conn = openmaster()
