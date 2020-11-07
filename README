@@ -26,7 +26,7 @@ tape_archive (database)
 A location is an URL that can for example be:
 	eiscat-tape://952206/.tau0l_fixed_42m_5.10_CP@42m/20040603_06
 	eiscat-raid://deposit/mnt/raid2/2004/tau0l_fixed_42m_5.10_CP@42m/20040603_06
-	http://www.tjottaheiki.fi/langtbartistan/20040603_06.tgz
+	http://***REMOVED***.tjottaheiki.fi/langtbartistan/20040603_06.tgz
 
     tapelib.{create|parse}_{tape|raid}url() can be used to pack or unpack these.
 
@@ -53,11 +53,11 @@ this command will traverse the whole tree (a bit slower):
 
 1.1. Convert data to the standard format.
 
-ral-type (year/date/*.tar.gz) can be "downloaded" by the archiver and
+ral-type (year/date/*.tar.gz) can be "downloaded" by the ***REMOVED*** and
 on-the-fly converted to the standard format.
 
 Old information directories with source/ and fir/ are also converted by
-the archiver, but can also be fixed by running
+the ***REMOVED***, but can also be fixed by running
 
     ./index_directories.py fix_old /mnt/raid1
 
@@ -146,9 +146,9 @@ SECURITY
 The mysql databases are configured to only accept connections from localhost.
 Three users are configured.
 root     - access to everything, protected with a secret password
-archiver - read/write access to tape_archive database with public password in
+***REMOVED*** - read/write access to tape_archive database with public password in
            cleartext in the scripts.
-www      - read access to tape_archive without password. Should be used to
+***REMOVED***      - read access to tape_archive without password. Should be used to
            prevent unintended deletions.
 
 Whenever a remote database needs to be connected to, a tunnel is set up
