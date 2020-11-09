@@ -114,7 +114,6 @@ class Conn:
 
     def select_experiment_storage_union(self, query, values=(), what="*", limit=None):
         sql = "SELECT " + what + " FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND " + query + "UNION SELECT " + what + " FROM tape_archive_tapes.experiments, tape_archive_tapes.resource, tape_archive_tapes.storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+ query
-
         return self.select_sql(sql, values+values, limit=limit)
 
     def select_experiment_resource(self, query, values=(), what="*", limit=None):
@@ -296,7 +295,6 @@ class Conn:
         Delete these entries. This can probably be made automatically
         with some magic sql reference statements..."""
         c = self.cur
-
         def sub(child_table, parent_table, variable, c=c, dry=dry, verbose=verbose):
             cmd = "SELECT DISTINCT " + child_table + "." + variable + " FROM " + child_table + " LEFT JOIN " + parent_table + " ON " + child_table + "." + variable + " = " + parent_table + "." + variable + " WHERE " + parent_table + "." + variable + " IS NULL"
             c.execute(cmd)
