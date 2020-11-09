@@ -7,7 +7,6 @@ SQL file catalogue routines, python3 version for AARC server
 Carl-Fredrik Enell, EISCAT
 '''
 
-
 # warning filter CFE 20160126
 import urllib.parse
 import warnings
@@ -68,12 +67,12 @@ class Conn:
         self.cur.execute("SELECT UNIX_TIMESTAMP('1970-01-02')")
         secs = 86400 - self.cur.fetchone()[0]
         if secs:
-            raise Exception("The timezone on mysqld is set wrong, %+.1f hours"%(secs/3600.0))
+            raise Exception("The timezone on mysqld is set wrong, %+.1f hours" % (secs/3600.0))
 
     def select_sql(self, sql, objs, limit=None):
         c = self.cur
         if limit:
-            sql += " LIMIT %d"%limit
+            sql += " LIMIT %d" % limit
             c.execute(sql, objs)
             valuess = c.fetchall()
             arry = []
@@ -88,28 +87,28 @@ class Conn:
     def union_select(self, table, limit=None, **kwords):
         sql = ""
         l = []
-        for key, value in kwords.items():
+        for key, value in list(kwords.items()):
             if type(value) == type('') and '%' in value:
                 l.append(key+" LIKE %s")
             else:
                 l.append(key+" = %s")
         sql += " AND ".join(l)
-        sql = "SELECT * FROM "+table+" WHERE " + sql + " UNION SELECT * FROM ***REMOVED***."+table+" WHERE " + sql
-        return self.select_sql(sql, kwords.values()+kwords.values(), limit=limit)
+        sql = "SELECT * FROM " + table + " WHERE " + sql + " UNION SELECT * FROM ***REMOVED***." + table + " WHERE " + sql
+        return self.select_sql(sql, list(kwords.values())+list(kwords.values()), limit=limit)
 
     def select(self, table, limit=None, **kwords):
         sql = "SELECT * FROM "+table+" WHERE "
         l = []
-        for key, value in kwords.items():
+        for key, value in list(kwords.items()):
             if type(value) == type('') and '%' in value:
                 l.append(key+" LIKE %s")
             else:
                 l.append(key+" = %s")
         sql += " AND ".join(l)
-        return self.select_sql(sql, kwords.values(), limit=limit)
+        return self.select_sql(sql,list(kwords.values()), limit=limit)
 
     def select_experiment_resource_union(self, query, values=(), what="*", limit=None):
-        sql = "SELECT "+what+" FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND "+query+ " UNION SELECT "+what+" FROM ***REMOVED***.experiments, ***REMOVED***.resource WHERE experiments.experiment_id = resource.experiment_id AND "+query
+        sql = "SELECT " + what + " FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND " + query + " UNION SELECT " + what + " FROM ***REMOVED***.experiments, ***REMOVED***.resource WHERE experiments.experiment_id = resource.experiment_id AND " + query
         return self.select_sql(sql, values+values, limit=limit)
 
     def select_experiment_storage_union(self, query, values=(), what="*", limit=None):
@@ -129,22 +128,22 @@ class Conn:
         return self.select_sql(sql, values, limit=limit)
 
     def insert(self, table, **kwords):
-        sql = "INSERT INTO "+table+" (" + ", ".join(kwords.keys()) + ")"
+        sql = "INSERT INTO "+table+" (" + ", ".join(list(kwords.keys())) + ")"
         sql += " VALUES (" + ','.join(["%s"]*len(kwords)) + ")"
-        self.cur.execute(sql, kwords.values())
+        self.cur.execute(sql, list(kwords.values()))
 
     def delete(self, table, like=0, **kwords):
         sql = "DELETE FROM "+table+" WHERE "
         like = like and " LIKE " or " = "
-        sql += " AND ".join([key+like+"%s" for key in kwords.keys()])
-        return self.cur.execute(sql, kwords.values())
+        sql += " AND ".join([key+like+"%s" for key in list(kwords.keys())])
+        return self.cur.execute(sql, list(kwords.values()))
 
     def create(self):
         """Create the tables needed. Beware: they will be purged if they
         exist already"""
         self.check_timezone()
         c = self.cur
-        for table, content in tape_tables.items():
+        for table, content in list(tape_tables.items()):
             c.execute("DROP TABLE IF EXISTS "+table)
             c.execute("CREATE TABLE "+table+" ("+content+")")
         self.conn.commit()
@@ -153,7 +152,7 @@ class Conn:
         """Create the tables needed."""
         self.check_timezone()
         c = self.cur
-        for table, content in tape_tables.items():
+        for table, content in list(tape_tables.items()):
             cmd = "SHOW INDEX FROM "+table
             c.execute(cmd)
             indices = {}
