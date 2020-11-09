@@ -429,7 +429,7 @@ def create_raidurl(node, path, flags=()):
 def parse_tapeurl(url):
     """split a eiscat-tape://tapenr/path url into
     (tapenr, path). Returns None if the url is not tape-type"""
-    scheme, node, path, query, fragment = urlparse.urlsplit(url)
+    scheme, node, path, query, fragment = urllib.parse.urlsplit(url)
     if scheme == "eiscat-tape" and node.isdigit():
         return (node, path[1:])
 
