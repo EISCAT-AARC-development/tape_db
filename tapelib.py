@@ -97,7 +97,7 @@ class Conn:
         return self.select_sql(sql, list(kwords.values())+list(kwords.values()), limit=limit)
 
     def select(self, table, limit=None, **kwords):
-        sql = "SELECT * FROM "+table+" WHERE "
+        sql = "SELECT * FROM " + table + " WHERE "
         l = []
         for key, value in list(kwords.items()):
             if type(value) == type('') and '%' in value:
@@ -112,30 +112,30 @@ class Conn:
         return self.select_sql(sql, values+values, limit=limit)
 
     def select_experiment_storage_union(self, query, values=(), what="*", limit=None):
-        sql = "SELECT "+what+" FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query+"UNION SELECT "+what+" FROM ***REMOVED***.experiments, ***REMOVED***.resource, ***REMOVED***.storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query
+        sql = "SELECT " + what + " FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND " + query + "UNION SELECT " + what + " FROM ***REMOVED***.experiments, ***REMOVED***.resource, ***REMOVED***.storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+ query
         return self.select_sql(sql, values+values, limit=limit)
 
     def select_experiment_resource(self, query, values=(), what="*", limit=None):
-        sql = "SELECT "+what+" FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND "+query
+        sql = "SELECT " + what + " FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND " + query
         return self.select_sql(sql, values, limit=limit)
 
     def select_experiment_storage(self, query, values=(), what="*", limit=None):
-        sql = "SELECT "+what+" FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+query
+        sql = "SELECT " + what + " FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND " + query
         return self.select_sql(sql, values, limit=limit)
 
     def select_resource_storage(self, query, values=(), what="*", limit=None):
-        sql = "SELECT "+what+" FROM resource, storage WHERE resource.resource_id = storage.resource_id AND "+query
+        sql = "SELECT " + what + " FROM resource, storage WHERE resource.resource_id = storage.resource_id AND " + query
         return self.select_sql(sql, values, limit=limit)
 
     def insert(self, table, **kwords):
-        sql = "INSERT INTO "+table+" (" + ", ".join(list(kwords.keys())) + ")"
+        sql = "INSERT INTO " + table + " (" + ", ".join(list(kwords.keys())) + ")"
         sql += " VALUES (" + ','.join(["%s"]*len(kwords)) + ")"
         self.cur.execute(sql, list(kwords.values()))
 
     def delete(self, table, like=0, **kwords):
-        sql = "DELETE FROM "+table+" WHERE "
+        sql = "DELETE FROM " + table + " WHERE "
         like = like and " LIKE " or " = "
-        sql += " AND ".join([key+like+"%s" for key in list(kwords.keys())])
+        sql += " AND ".join([key + like + "%s" for key in list(kwords.keys())])
         return self.cur.execute(sql, list(kwords.values()))
 
     def create(self):
@@ -144,8 +144,8 @@ class Conn:
         self.check_timezone()
         c = self.cur
         for table, content in list(tape_tables.items()):
-            c.execute("DROP TABLE IF EXISTS "+table)
-            c.execute("CREATE TABLE "+table+" ("+content+")")
+            c.execute("DROP TABLE IF EXISTS " + table)
+            c.execute("CREATE TABLE " + table + " (" + content + ")")
         self.conn.commit()
 
     def alter(self):
@@ -153,34 +153,34 @@ class Conn:
         self.check_timezone()
         c = self.cur
         for table, content in list(tape_tables.items()):
-            cmd = "SHOW INDEX FROM "+table
+            cmd = "SHOW INDEX FROM " + table
             c.execute(cmd)
             indices = {}
             for t in c.fetchall():
                 index = t[2]
                 if index != 'PRIMARY':
                     indices[index] = 1
-            cmd = "SHOW COLUMNS FROM "+table
+            cmd = "SHOW COLUMNS FROM " + table
             c.execute(cmd)
             columns = {}
             for t in c.fetchall():
                 column = t[0]
                 columns[column] = 1
 
-            cmd = "ALTER IGNORE TABLE "+table +" DROP PRIMARY KEY"
+            cmd = "ALTER IGNORE TABLE " + table + " DROP PRIMARY KEY"
             for index in indices:
-                cmd += ",\nDROP INDEX "+index
+                cmd += ",\nDROP INDEX " + index
             for s in content.split(',\n'):
                 s = ' '.join(s.split())
                 if s[0].isupper():
-                    cmd += ',\nADD '+s
+                    cmd += ',\nADD ' + s
                 elif s.split()[0] in columns:
-                    cmd += ',\nMODIFY '+s
+                    cmd += ',\nMODIFY ' + s
                     del columns[s.split()[0]]
                 else:
                     cmd += ',\nADD '+s
             for s in columns:
-                cmd += ',\nDROP '+s
+                cmd += ',\nDROP ' + s
             eval(input("\n"+ cmd + " [press enter to continue] "))
             try:
                 c.execute(cmd)
@@ -296,7 +296,7 @@ class Conn:
         c = self.cur
 
         def sub(child_table, parent_table, variable, c=c, dry=dry, verbose=verbose):
-            cmd = "SELECT DISTINCT "+child_table+"."+variable+" FROM "+child_table+" LEFT JOIN "+parent_table+" ON "+child_table+"."+variable+" = "+parent_table+"."+variable+" WHERE "+parent_table+"."+variable+" IS NULL"
+            cmd = "SELECT DISTINCT " + child_table + "." + variable + " FROM " + child_table + " LEFT JOIN " + parent_table + " ON " + child_table + "." + variable + " = " + parent_table + "." + variable + " WHERE " + parent_table + "." + variable + " IS NULL"
             c.execute(cmd)
             ids = [x for x, in c.fetchall()]
             if ids:
@@ -308,11 +308,11 @@ class Conn:
                     if verbose:
                         print("...deleting")
                     for i in range(len(ids)/blocklen):
-                        cmd = "DELETE FROM "+child_table+" WHERE "+variable+" IN ("+','.join(['%s']*blocklen)+')'
+                        cmd = "DELETE FROM " + child_table + " WHERE " + variable + " IN ("+','.join(['%s']*blocklen) + ')'
                         c.execute(cmd, ids[i*blocklen:((i+1)*blocklen)])
-                    cmd = "DELETE FROM "+child_table+" WHERE "+variable+" IN ("+','.join(['%s']*(len(ids)-(i+1)*blocklen))+')'
+                    cmd = "DELETE FROM " + child_table + " WHERE " + variable + " IN ("+','.join(['%s']*(len(ids)-(i+1)*blocklen)) + ')'
                     c.execute(cmd, ids[(i+1)*blocklen:len(ids)])
-        sub("resourcz", "experiments", "experiment_id")
+        sub("resource", "experiments", "experiment_id")
         sub("storage", "resource", "resource_id")
         if backwards:
             sub("experiments", "resource", "experiment_id")
@@ -325,15 +325,15 @@ class Conn:
         if not db:
             db = ""
         else:
-            db = db+"."
+            db = db + "."
         what = "*, UNIX_TIMESTAMP(start) AS unix_start, UNIX_TIMESTAMP(end) AS unix_end"
-        cmd = "SELECT "+what+" FROM "+db+"resource WHERE experiment_id = %s AND start < FROM_UNIXTIME(%s) AND end > FROM_UNIXTIME(%s)"
+        cmd = "SELECT " + what + " FROM " + db + "resource WHERE experiment_id = %s AND start < FROM_UNIXTIME(%s) AND end > FROM_UNIXTIME(%s)"
         dataset1 = self.select_sql(cmd, (experiment_id, end, start), limit=limit)
-        cmd = "SELECT type, MAX(start) FROM "+db+"resource WHERE experiment_id = %s AND end = FROM_UNIXTIME(0) AND start <= FROM_UNIXTIME(%s) GROUP BY type"
+        cmd = "SELECT type, MAX(start) FROM " + db + "resource WHERE experiment_id = %s AND end = FROM_UNIXTIME(0) AND start <= FROM_UNIXTIME(%s) GROUP BY type"
         c = self.cur
         c.execute(cmd, (experiment_id, start))
         special = c.fetchall()
-        cmd = "SELECT "+what+" FROM "+db+"resource WHERE experiment_id = %s AND end = FROM_UNIXTIME(0) AND (start > FROM_UNIXTIME(%s) AND start < FROM_UNIXTIME(%s)"
+        cmd = "SELECT " + what + " FROM " + db + "resource WHERE experiment_id = %s AND end = FROM_UNIXTIME(0) AND (start > FROM_UNIXTIME(%s) AND start < FROM_UNIXTIME(%s)"
         args = [experiment_id, start, end]
         for tuple in special:
             cmd += " OR type = %s AND start = %s"
@@ -368,7 +368,10 @@ def openMySQL(**params):
     return Conn(MySQLdb, db)
 
 def openMySQL_SSH(host, port=3306, interactive=0, **params):
-    import os, random, subprocess, shlex
+    import os
+    import random
+    import subprocess
+    import shlex
     for i in range(5):
         localport = random.randrange(1025, 65535)
         cmd = "ssh -x -L %d:localhost:%d %s 'echo OK; cat'" % (localport, port, host)
@@ -389,10 +392,10 @@ def openmaster():
     if nodename() in ("data1", "eiscathq"):
         return openMySQL(host="192.168.11.5", passwd='***REMOVED***', db='***REMOVED***', user='***REMOVED***')
     else:
-        return openMySQL(host="localhost", passwd='***REMOVED***', db='***REMOVED***', user='***REMOVED***')
+        return openMySQL(host="127.0.0.1", passwd='***REMOVED***', db='***REMOVED***', user='***REMOVED***')
 
 def opendefault():
-    return openMySQL(host="localhost", db='***REMOVED***', user='***REMOVED***')
+    return openMySQL(host="127.0.0.1", db='***REMOVED***', user='***REMOVED***')
 
 ############# URL handling routines ########################
 _cached_nodename = None
