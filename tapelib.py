@@ -73,16 +73,16 @@ class Conn:
         c = self.cur
         if limit:
             sql += " LIMIT %d" % limit
-            c.execute(sql, objs)
-            valuess = c.fetchall()
-            arry = []
-            for values in valuess:
-                dict = nicedict()
-                for col_info, value in zip(c.description, values):
-                    name = col_info[0]
-                    dict[name] = value
-                arry.append(dict)
-            return arry
+        c.execute(sql, objs)
+        valuess = c.fetchall()
+        arry = []
+        for values in valuess:
+            dict = nicedict()
+            for col_info, value in zip(c.description, values):
+                name = col_info[0]
+                dict[name] = value
+            arry.append(dict)
+        return arry
 
     def union_select(self, table, limit=None, **kwords):
         sql = ""
@@ -110,9 +110,11 @@ class Conn:
     def select_experiment_resource_union(self, query, values=(), what="*", limit=None):
         sql = "SELECT " + what + " FROM experiments, resource WHERE experiments.experiment_id = resource.experiment_id AND " + query + " UNION SELECT " + what + " FROM tape_archive_tapes.experiments, tape_archive_tapes.resource WHERE experiments.experiment_id = resource.experiment_id AND " + query
         return self.select_sql(sql, values+values, limit=limit)
+        
 
     def select_experiment_storage_union(self, query, values=(), what="*", limit=None):
         sql = "SELECT " + what + " FROM experiments, resource, storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND " + query + "UNION SELECT " + what + " FROM tape_archive_tapes.experiments, tape_archive_tapes.resource, tape_archive_tapes.storage WHERE experiments.experiment_id = resource.experiment_id AND resource.resource_id = storage.resource_id AND "+ query
+
         return self.select_sql(sql, values+values, limit=limit)
 
     def select_experiment_resource(self, query, values=(), what="*", limit=None):
@@ -392,10 +394,10 @@ def openmaster():
     if nodename() in ("data1", "eiscathq"):
         return openMySQL(host="192.168.11.5", passwd='ks902jf4', db='disk_archive', user='archiver')
     else:
-        return openMySQL(host="127.0.0.1", passwd='ks902jf4', db='disk_archive', user='archiver')
+        return openMySQL(host="localhost", passwd='ks902jf4', db='disk_archive', user='archiver')
 
 def opendefault():
-    return openMySQL(host="127.0.0.1", db='disk_archive', user='www')
+    return openMySQL(host='localhost', db='disk_archive', user='www')
 
 ############# URL handling routines ########################
 _cached_nodename = None
