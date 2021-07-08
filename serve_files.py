@@ -16,16 +16,15 @@ import sys
 import cgi
 import tapelib
 import eiscat_auth
+from token_dec import token_dec
 
 portno = 37009
 
 if len(sys.argv) > 1:
     portno = int(sys.argv[1])
 
-token_signing_pub_key_path = os.environ["TOKEN_SIGNING_PUB_KEY_PATH"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
-token_signing_pub_key = open(token_signing_pub_key_path, 'r').read()
 
 def GETorHEAD(self):
     import socket
@@ -46,11 +45,13 @@ def GETorHEAD(self):
     q = parse_qs(p.query)
     fname = q['fname'][0]
     token = q['token'][0]
-    # --- introspect
-    claim = 'EI'
-    # ---
-    groups = eiscat_auth.parse_groups(claim)
-    
+    # Decode and validate JWT token
+    try:
+        jwt_payload = token_dec(token)  
+        groups = eiscat_auth.parse_groups(jwt_payload['eduperson_entitlement'])
+    except:
+        self.send_response(400) #Authentication failed
+        return
     format = os.path.splitext(fname)[1][1:]
     try:
         assert format in ('tar', 'tgz', 'zip')
@@ -179,7 +180,8 @@ def run_as_server():
     if portno == 37009:
         print("Enabling SSL")
         import ssl
-        sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+        sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        # sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
         sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
         httpd.socket = sslcontext.wrap_socket(httpd.socket, server_side=True)
     print('Starting server on port %i' % portno)
@@ -194,3 +196,4 @@ def testzipper(path):
 
 if __name__ == '__main__':
     run_as_server()
+
