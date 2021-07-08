@@ -10,13 +10,12 @@
 
 from socketserver import BaseServer, ThreadingMixIn
 from http.server import *
+from urllib.parse import urlparse, parse_qs
 import os
 import sys
 import cgi
 import tapelib
-
-sys.path.append("/home/archive/shared-auth")
-from token_url_utility import ExtendedUrl
+import eiscat_auth
 
 portno = 37009
 
@@ -24,8 +23,6 @@ if len(sys.argv) > 1:
     portno = int(sys.argv[1])
 
 token_signing_pub_key_path = os.environ["TOKEN_SIGNING_PUB_KEY_PATH"]
-# data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
-# data_server_ssl_ca_file = os.environ["DATA_SERVER_SSL_CA_FILE"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
 token_signing_pub_key = open(token_signing_pub_key_path, 'r').read()
@@ -44,23 +41,23 @@ def GETorHEAD(self):
         self.wfile.write('<meta http-equiv="Refresh" content="9;url=javascript:history.go(-1)">'.encode('utf-8'))
         self.wfile.write(f"{ip} has reached maximum number of parallel streams".encode('utf-8'))
         return
-    ext_url = ExtendedUrl(self.path)
-    try:
-        claims = ext_url.get_claims(token_signing_pub_key)
-    except Exception as e:
-        print(e)
-    ext_url.remove_token_from_url()
-    req = '/' + str(ext_url.path)
-    print('token validated correctly')
-    print(f'requested resource: {req}')
-    req, fname = os.path.split(req)
+
+    p = urlparse(self.path)
+    q = parse_qs(p.query)
+    fname = q['fname'][0]
+    token = q['token'][0]
+    # --- introspect
+    claim = 'EI'
+    # ---
+    groups = eiscat_auth.parse_groups(claim)
+    
     format = os.path.splitext(fname)[1][1:]
     try:
         assert format in ('tar', 'tgz', 'zip')
     except AssertionError:
         sys.stderr.write(f"Unknown format: {ip} {fname}".encode('utf-8'))
         return
-    paths = req.split(';')
+    paths = q['id']
     for i, path in enumerate(paths):
         if path[0] != '/':
             paths[i] = '/'+path
@@ -68,8 +65,8 @@ def GETorHEAD(self):
     if paths[0][1:].isdigit():
         path = []
         machine = tapelib.nodename()
-        for id in paths:
-            cmd = "SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'" % (id[1:], machine)
+        for eid in paths:
+            cmd = "SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'" % (eid[1:], machine)
             sql.cur.execute(cmd)
             ls = sql.cur.fetchall()[0][0]
             m, path1, f = tapelib.parse_raidurl(ls)
@@ -80,9 +77,13 @@ def GETorHEAD(self):
             for path in paths:
                 url = tapelib.create_raidurl(tapelib.nodename(), path)
                 l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
-                print(l)
+                assert eiscat_auth.auth_download(groups, l.date, l.account, l.country)
         except AssertionError:
+            self.send_response(403) #Access forbidden
             sys.stderr.write(f"Bad IP: {ip} {(l.account or l.country)}".encode('utf-8'))
+            sql.close()
+            del sql
+            return
         finally:
             sql.close()
         del sql
