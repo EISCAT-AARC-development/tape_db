@@ -36,7 +36,7 @@ def auth_download(groups, expdate, account, codes):
             return True
     # Allow owner
     for group in groups:
-        if group.lower() in account.lower() or group.lower in codes.lower()
+        if group.lower() in account.lower() or group.lower in codes.lower():
             return True
     # Otherwise deny access
     return False
