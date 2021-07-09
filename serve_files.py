@@ -116,6 +116,7 @@ def GETorHEAD(self):
         self.wfile.write('\n'.join(paths).encode('utf-8'))
     else:
         self.send_header("Content-type", mime)
+        self.send_header("Content-Disposition", f"attachment; filename={fname}")
         if enc:
             self.send_header("Content-encoding", enc)
         self.end_headers()
@@ -158,7 +159,7 @@ def send_archive(paths, format, fname, fout):
         import tarfile
         import socket
         mode = format == 'tgz' and 'w|gz' or 'w|'
-        packer = tarfile.open(name=fname, fileobj=fout, mode=mode)
+        packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode)
         for path in paths:
             try:
                 packer.add(path, arcname(path))
@@ -172,12 +173,12 @@ def send_archive(paths, format, fname, fout):
         packer = zipfile.ZipFile(fout, "w", zipfile.ZIP_STORED)
         files = [(x, arcname(x)) for x in paths]
         while files:
-            file, arc = files.pop()
-            if os.path.isdir(file):
-                content = os.listdir(file)
-                files.extend([(file+'/'+m, arc+'/'+m) for m in content])
+            tfile, arc = files.pop()
+            if os.path.isdir(tfile):
+                content = os.listdir(tfile)
+                files.extend([(tfile+'/'+m, arc+'/'+m) for m in content])
             else:
-                packer.write(file, arc)
+                packer.write(tfile, arc)
     packer.close()
 
 def run_from_inetd():
