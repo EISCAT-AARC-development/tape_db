@@ -23,8 +23,15 @@ portno = 37009
 if len(sys.argv) > 1:
     portno = int(sys.argv[1])
 
+data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
+
+if portno == 37009:
+    print("Using SSL")
+    print(f"SSL CA path: {data_server_ssl_ca_path}")
+    print(f"SSL cert path: {data_server_ssl_cert_path}")
+    print(f"SSL key path: {data_server_ssl_key_path}")
 
 def GETorHEAD(self):
     import socket
@@ -47,22 +54,26 @@ def GETorHEAD(self):
     token = q['token'][0]
     # Decode and validate JWT token
     try:
-        jwt_payload = token_dec(token)  
+        jwt_payload = token_dec(token)        
         groups = eiscat_auth.parse_groups(jwt_payload['eduperson_entitlement'])
     except:
         self.send_response(400) #Authentication failed
+        sys.stderr.write("Could not decode JWT")
         return
     format = os.path.splitext(fname)[1][1:]
     try:
         assert format in ('tar', 'tgz', 'zip')
     except AssertionError:
-        sys.stderr.write(f"Unknown format: {ip} {fname}".encode('utf-8'))
+        sys.stderr.write(f"Unknown format: {ip} {fname}")
         return
     paths = q['id']
     for i, path in enumerate(paths):
         if path[0] != '/':
             paths[i] = '/'+path
-    sql = tapelib.opendefault()
+    try:
+        sql = tapelib.opendefault()
+    except:
+        sys.stderr.write("Could not open database connection")
     if paths[0][1:].isdigit():
         path = []
         machine = tapelib.nodename()
@@ -81,9 +92,8 @@ def GETorHEAD(self):
                 assert eiscat_auth.auth_download(groups, l.date, l.account, l.country)
         except AssertionError:
             self.send_response(403) #Access forbidden
-            sys.stderr.write(f"Bad IP: {ip} {(l.account or l.country)}".encode('utf-8'))
+            sys.stderr.write(f"Access denied for user {jwt_payload['email']}")
             sql.close()
-            del sql
             return
         finally:
             sql.close()
@@ -178,13 +188,12 @@ def run_as_server():
     server_address = ('', portno)
     httpd = ThreadedHTTPServer(server_address, ReqHandler)
     if portno == 37009:
-        print("Enabling SSL")
+        print(f"Enabling SSL on port {portno}")
         import ssl
-        sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        # sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+        sslcontext = ssl.create_default_context(cafile=data_server_ssl_ca_path,purpose=ssl.Purpose.CLIENT_AUTH)
         sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
         httpd.socket = sslcontext.wrap_socket(httpd.socket, server_side=True)
-    print('Starting server on port %i' % portno)
+    print(f'Starting server on port {portno}')
     httpd.serve_forever()
 
 def testzipper(path):
