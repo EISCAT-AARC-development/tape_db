@@ -389,13 +389,13 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
     return conn
 
 def openmaster():
-    if nodename() in ("data1", "eiscathq"):
-        return openMySQL(host="192.168.11.5", passwd='ks902jf4', db='disk_archive', user='archiver')
+    if nodename() in ("data", "data1", "eiscathq"):
+        return openMySQL(host="192.168.11.9", passwd='ks902jf4', db='disk_archive', user='archiver')
     else:
         return openMySQL(host="localhost", passwd='ks902jf4', db='disk_archive', user='archiver')
 
 def opendefault():
-    return openMySQL(host='localhost', db='disk_archive', user='www')
+    return openMySQL(host='192.168.11.9', db='disk_archive', user='www')
 
 ############# URL handling routines ########################
 _cached_nodename = None
