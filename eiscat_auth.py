@@ -17,6 +17,7 @@ def parse_groups(claim):
     c = re.compile(claim_pat)
     for cl in claim.split(','):
         m = c.match(cl)
+        group = m.groupdict()['group'].lower()
         if group in Codes:
             group = Codes[group]
         if group not in groups:
@@ -26,17 +27,39 @@ def parse_groups(claim):
 def auth_download(groups, expdate, account, codes):
     ### Check age of experiment
     # Allow > 1 year
-    timediff = expdate - datetime.datetime.now()
+    # expdate is in unix time
+    timediff = datetime.datetime.fromtimestamp(expdate) - datetime.datetime.now()
     if timediff.days > 365:
         return True
+    # Merge Account and Group
+    allowed = []
+    try:
+        for assoc in account.split(' '):
+            # remove any number in bracket
+            assoc = re.sub('\(\d+\)', '', assoc)
+            if assoc not in allowed:
+                allowed.append(assoc.lower()) 
+    except:
+        pass
+    try:
+        for assoc in codes.split(' '):
+            assoc = re.sub('\(\d+\)', '', assoc)
+            if assoc not in allowed:
+                allowed.append(assoc.lower()) 
+    except:
+        pass
+
     ### Check download permission
+    # Allow if no account information in db
+    if len(allowed) == 0:
+        return True
     # Allow AA and CP
     for group in ('aa', 'cp'):
-        if group in account.lower() or group in codes.lower():
+        if group in allowed:
             return True
     # Allow owner
     for group in groups:
-        if group.lower() in account.lower() or group.lower in codes.lower():
+        if group.lower() in allowed:
             return True
     # Otherwise deny access
     return False
