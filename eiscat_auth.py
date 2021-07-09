@@ -2,7 +2,6 @@
 import re
 import datetime
 
-
 def parse_groups(claim):
     ### Country codes to modify
     Codes ={
