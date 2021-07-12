@@ -2,7 +2,7 @@
 import re
 import datetime
 
-def parse_groups(claim):
+def _parse_groups(claim):
     ### Country codes to modify
     Codes ={
         'de': 'ge',
@@ -23,14 +23,14 @@ def parse_groups(claim):
             groups.append(group)
     return groups
 
-def auth_download(groups, expdate, account, codes):
+def auth_download(claim, expdate, account, codes):
     ### Check age of experiment
     # Allow > 1 year
     # expdate is in unix time
     timediff = datetime.datetime.fromtimestamp(expdate) - datetime.datetime.now()
     if timediff.days > 365:
         return True
-    # Merge Account and Group
+    # Merge Account and Assoc codes
     allowed = []
     try:
         for assoc in account.split(' '):
@@ -57,10 +57,8 @@ def auth_download(groups, expdate, account, codes):
         if group in allowed:
             return True
     # Allow owner
-    for group in groups:
+    for group in _parse_groups(claim):
         if group.lower() in allowed:
             return True
     # Otherwise deny access
     return False
-    
-    
