@@ -15,8 +15,9 @@ import os
 import sys
 import cgi
 import tapelib
+import datetime
 import eiscat_auth
-from token_dec import token_dec
+import requests
 
 portno = 37009
 
@@ -26,6 +27,10 @@ if len(sys.argv) > 1:
 data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
+client_url = os.environ["OIDC_URL"]
+client_id = os.environ["OIDC_CLIENT_ID"]
+client_secret = os.environ["OIDC_CLIENT_SECRET"]
+
 
 if portno == 37009:
     print("Using SSL")
@@ -51,15 +56,28 @@ def GETorHEAD(self):
     p = urlparse(self.path)
     q = parse_qs(p.query)
     fname = q['fname'][0]
-    token = q['token'][0]
-    # Decode and validate JWT token
+    access_token = q['access_token'][0]
+
+    # OIDC Introspection of token
+    ans = requests.get(f"{client_url}?token={access_token}", auth=(client_id, client_secret), headers={"Content-Type": "application/x-www-form-urlencoded"})
+    if not ans.ok:
+        sys.stderr.write("Could not connect to OIDC server")
+        self.send_response(400) # Auth failed
+    if not (ans.json()['active']):
+        self.wfile.write("No active login session. Make sure that you are logged in")
+        self.send_response(400) # Auth failed
     try:
-        jwt_payload = token_dec(token)        
-        groups = eiscat_auth.parse_groups(jwt_payload['eduperson_entitlement'])
+        exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'].strip('+0000'))
+        assert exp_time >= datetime.datetime.utcnow()
     except:
-        self.send_response(400) #Authentication failed
-        sys.stderr.write("Could not decode JWT")
-        return
+        self.wfile.write("Token expired")
+        self.send_response(401) # Auth invalid
+    try:
+        claim = ans.json()['eduperson_entitlement']
+    except:
+        claim = ''
+
+                    
     format = os.path.splitext(fname)[1][1:]
     try:
         assert format in ('tar', 'tgz', 'zip')
@@ -84,22 +102,21 @@ def GETorHEAD(self):
             m, path1, f = tapelib.parse_raidurl(ls)
             path.append(path1)
             paths = path
+
     try:
-        try:
-            for path in paths:
-                url = tapelib.create_raidurl(tapelib.nodename(), path)
-                l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
-                assert eiscat_auth.auth_download(groups, l.date, l.account, l.country)
-        except AssertionError:
-            self.send_response(403) #Access forbidden
-            sys.stderr.write(f"Access denied for user {jwt_payload['email']}")
-            sql.close()
-            return
-        finally:
-            sql.close()
+        # Authorization check
+        for path in paths:
+            url = tapelib.create_raidurl(tapelib.nodename(), path)
+            l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
+            assert eiscat_auth.auth_download(claim, l.date, l.account, l.country)
+    except AssertionError:
+        self.send_response(403) #Access forbidden
+        sys.stderr.write(f"Access denied for user {ans.json()['uid']}")
+        sql.close()
+        return
+    finally:
+        sql.close()
         del sql
-    except IOError as why:
-        print(f"{why} -- Don't really need it if all is right")
 
     try:
         self.send_response(200)
