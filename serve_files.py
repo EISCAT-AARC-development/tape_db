@@ -1,12 +1,25 @@
 #!/usr/bin/env python3
 
 # the purpose of this file is to listen on a tcp port and handle
-# download requests by HTTP(S) query on the form
-# id=3&id=5&id=6&format=tar
+# download requests by HTTPS query on the form
+# ?id=3&id=5&id=6&fname=output.tar&auth_token=<OIDC Token>
 # the id is the resource_id and it is the
 # responsibility for this script to select an appropriate
 # source to fetch from.
-# format is tar, tgz or zip
+
+""" 
+EISCAT File server
+
+This script listens for https requests on a tcp port (default 37009)
+and prepares data for download
+
+Additions 2021: Access token, OIDC introspection and access authorization check
+URL format: https://machine:portno?id=<int>&id=<int>&fname=<str>.tar&access_token=<oidc token>
+
+Last modifications
+(C) Carl-Fredrik Enell 2021
+carl-fredrik.enell@eiscat.se
+"""
 
 from socketserver import BaseServer, ThreadingMixIn
 from http.server import *
@@ -53,6 +66,7 @@ def GETorHEAD(self):
         self.wfile.write(f"{ip} has reached maximum number of parallel streams".encode('utf-8'))
         return
 
+    # Get parameters from query in URL
     p = urlparse(self.path)
     q = parse_qs(p.query)
     fname = q['fname'][0]
@@ -77,52 +91,49 @@ def GETorHEAD(self):
     except:
         claim = ''
 
-                    
+    # Selected output format valid?
     format = os.path.splitext(fname)[1][1:]
     try:
         assert format in ('tar', 'tgz', 'zip')
     except AssertionError:
         sys.stderr.write(f"Unknown format: {ip} {fname}")
         return
-    paths = q['id']
-    for i, path in enumerate(paths):
-        if path[0] != '/':
-            paths[i] = '/'+path
+
+    # Get data locations
+    eids = q['id']
     try:
         sql = tapelib.opendefault()
     except:
         sys.stderr.write("Could not open database connection")
-    if paths[0][1:].isdigit():
-        path = []
-        machine = tapelib.nodename()
-        for eid in paths:
-            cmd = "SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'" % (eid[1:], machine)
-            sql.cur.execute(cmd)
-            ls = sql.cur.fetchall()[0][0]
-            m, path1, f = tapelib.parse_raidurl(ls)
-            path.append(path1)
-            paths = path
+    paths = []
+    machine = tapelib.nodename()
+    for eid in eids:
+        cmd = "SELECT location FROM storage WHERE resource_id=%s AND location LIKE 'eiscat-raid://%s%%'" % (eid, machine)
+        sql.cur.execute(cmd)
+        ls = sql.cur.fetchall()[0][0]
+        m, path1, f = tapelib.parse_raidurl(ls)
+        paths.append(path1)
 
+    # Authorization check
     try:
-        # Authorization check
         for path in paths:
             url = tapelib.create_raidurl(tapelib.nodename(), path)
             l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
             assert eiscat_auth.auth_download(claim, l.date, l.account, l.country)
     except AssertionError:
         self.send_response(403) #Access forbidden
-        sys.stderr.write(f"Access denied for user {ans.json()['uid']}")
-        sql.close()
+        sys.stderr.write(f"Access denied for user {ans.json()['email']}")
         return
     finally:
         sql.close()
         del sql
-
     try:
         self.send_response(200)
     except error as why:
         sys.stderr.write(f"{why} -- Timed out?")
         return
+
+    # Send output
     import mimetypes
     mime, enc = mimetypes.guess_type(fname)
     if False:   # debug
@@ -138,6 +149,7 @@ def GETorHEAD(self):
             self.send_header("Content-encoding", enc)
         self.end_headers()
         send_archive(paths, format, fname, self.wfile)
+
 
 class ReqHandler(BaseHTTPRequestHandler):
     def do_PING(self):
@@ -223,4 +235,3 @@ def testzipper(path):
 
 if __name__ == '__main__':
     run_as_server()
-

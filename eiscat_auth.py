@@ -2,19 +2,40 @@
 import re
 import datetime
 
+"""
+EISCAT Download authorization rules
+
+Summary:
+-Everything older than 1 year is allowed
+-AA and CP are always allowed
+-Other experiments are only accessible by group members
+matching Country or Account in db.
+
+
+(C) Carl-Fredrik Enell 2021
+carl-fredrik.enell@eiscat.se
+"""
+
 def _parse_groups(claim):
-    ### Country codes to modify
+    ### Help routines
+    """
+    Return list of groups
+    parsed from eduperson_entitlement claim.
+    Input: list of claims as returned by OIDC introspection
+    in result.json()['eduperson_entitlement']
+    """
+
+    # Country codes to modify to EISCAT db standard
     Codes ={
         'de': 'ge',
         'jp': 'ni',
         'se': 'sw',
     }
     groups = []
-    # Claim example
-    # urn:mace:egi.eu:group:eiscat.se:EI:Experiments:role=member#aai.egi.eu,urn:mace:egi.eu:group:eiscat.se:EI:role=member#aai.egi.eu
+    # Match pattern
     claim_pat = r'urn\:mace\:egi\.eu\:group\:eiscat\.se\:(?P<group>\w+)\:'
     c = re.compile(claim_pat)
-    for cl in claim.split(','):
+    for cl in claim:
         m = c.match(cl)
         group = m.groupdict()['group'].lower()
         if group in Codes:
@@ -24,13 +45,25 @@ def _parse_groups(claim):
     return groups
 
 def auth_download(claim, expdate, account, codes):
+    ### Main funtion
+    """
+    Authorization
+
+    Inputs:
+    claim: List of OIDC eduperson_entitlement claims
+    expdate: Experiment start UNIX time
+    account: Account string from db e.g "SW(30) NO(50)"
+    codes: Assoc code(s) from db e.g. "FI"
+
+    Return: True or False
+    """
     ### Check age of experiment
     # Allow > 1 year
-    # expdate is in unix time
     timediff = datetime.datetime.fromtimestamp(expdate) - datetime.datetime.now()
     if timediff.days > 365:
         return True
-    # Merge Account and Assoc codes
+
+    ### Merge Account and Assoc codes to one unique list
     allowed = []
     try:
         for assoc in account.split(' '):
@@ -48,7 +81,7 @@ def auth_download(claim, expdate, account, codes):
     except:
         pass
 
-    ### Check download permission
+    ### Check download permission by group
     # Allow if no account information in db
     if len(allowed) == 0:
         return True
@@ -56,7 +89,7 @@ def auth_download(claim, expdate, account, codes):
     for group in ('aa', 'cp'):
         if group in allowed:
             return True
-    # Allow owner
+    # Allow group member
     for group in _parse_groups(claim):
         if group.lower() in allowed:
             return True
