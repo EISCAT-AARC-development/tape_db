@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -u
 
 # the purpose of this file is to listen on a tcp port and handle
 # download requests by HTTPS query on the form
