@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import re
 import datetime
+import sys
 
 """
 EISCAT Download authorization rules
@@ -26,7 +27,7 @@ def _parse_groups(claim):
     """
 
     # Country codes to modify to EISCAT db standard
-    Codes ={
+    mod_codes ={
         'de': 'ge',
         'jp': 'ni',
         'se': 'sw',
@@ -38,13 +39,13 @@ def _parse_groups(claim):
     for cl in claim:
         m = c.match(cl)
         group = m.groupdict()['group'].lower()
-        if group in Codes:
-            group = Codes[group]
+        if group in mod_codes:
+            group = mod_codes[group]
         if group not in groups:
             groups.append(group)
     return groups
 
-def auth_download(claim, expdate, account, codes):
+def auth_download(claim, expdate, account, country):
     ### Main funtion
     """
     Authorization
@@ -52,46 +53,57 @@ def auth_download(claim, expdate, account, codes):
     Inputs:
     claim: List of OIDC eduperson_entitlement claims
     expdate: Experiment start UNIX time
-    account: Account string from db e.g "SW(30) NO(50)"
-    codes: Assoc code(s) from db e.g. "FI"
+    account: Account string from db e.g "SW(30)NO(50)"
+    country: Assoc code(s) from db e.g. "FI"
 
     Return: True or False
     """
     ### Check age of experiment
     # Allow > 1 year
-    timediff = datetime.datetime.fromtimestamp(expdate) - datetime.datetime.now()
+    timediff = datetime.datetime.now() - datetime.datetime.fromtimestamp(expdate)
     if timediff.days > 365:
+        sys.stderr.write("Access granted: old data\n")
         return True
 
-    ### Merge Account and Assoc codes to one unique list
+    ### Merge Account and Country codes to one unique list
     allowed = []
     try:
+        # remove any number in bracket
+        account = re.sub('\(\d+\)', ' ', account)
         for assoc in account.split(' '):
-            # remove any number in bracket
-            assoc = re.sub('\(\d+\)', '', assoc)
-            if assoc not in allowed:
-                allowed.append(assoc.lower()) 
+            assoc = assoc[0:2].lower() # CP6 -> cp, etc
+            if len(assoc) == 2 and assoc not in allowed:
+                allowed.append(assoc) 
     except:
         pass
+    
     try:
-        for assoc in codes.split(' '):
-            assoc = re.sub('\(\d+\)', '', assoc)
-            if assoc not in allowed:
-                allowed.append(assoc.lower()) 
+        # Country is always a 2-letter string
+        assoc = country.lower()
+        if len(assoc) == 2 and assoc != 'sp' and assoc not in allowed:
+            allowed.append(assoc) 
     except:
         pass
-
+    
+    sys.stderr.write(f"Allowed groups: {allowed}")
     ### Check download permission by group
     # Allow if no account information in db
     if len(allowed) == 0:
+        sys.stderr.write("Allowed groups empty. Granting access\n")
         return True
     # Allow AA and CP
     for group in ('aa', 'cp'):
         if group in allowed:
+            sys.stderr.write(f"Group {group} is allowed. Granting access\n")
             return True
     # Allow group member
     for group in _parse_groups(claim):
-        if group.lower() in allowed:
+        if group in ('ei', 'dev'):
+            sys.stderr.write(f"Group {group} is always allowed. Granting access\n")
+            return True
+        if group in allowed:
+            sys.stderr.write(f"Group {group} is allowed. Granting access\n")
             return True
     # Otherwise deny access
+    sys.stderr.write(f"Access denied ")
     return False
