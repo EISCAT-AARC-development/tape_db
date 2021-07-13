@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import re
 import datetime
-import sys
 
 """
 EISCAT Download authorization rules
@@ -62,7 +61,7 @@ def auth_download(claim, expdate, account, country):
     # Allow > 1 year
     timediff = datetime.datetime.now() - datetime.datetime.fromtimestamp(expdate)
     if timediff.days > 365:
-        sys.stderr.write("Access granted: old data\n")
+        print("Access granted: old data\n")
         return True
 
     ### Merge Account and Country codes to one unique list
@@ -79,32 +78,32 @@ def auth_download(claim, expdate, account, country):
     
     try:
         # Country is always a 2-letter string
-        assoc = country.lower()
-        if len(assoc) == 2 and assoc != 'sp' and assoc not in allowed:
+        assoc = country[0:2].lower()
+        if assoc != 'sp' and assoc not in allowed:
             allowed.append(assoc) 
     except:
         pass
     
-    sys.stderr.write(f"Allowed groups: {allowed}")
+    print(f"Allowed groups: {allowed}")
     ### Check download permission by group
     # Allow if no account information in db
     if len(allowed) == 0:
-        sys.stderr.write("Allowed groups empty. Granting access\n")
+        print("Allowed groups empty. Granting access\n")
         return True
     # Allow AA and CP
     for group in ('aa', 'cp'):
         if group in allowed:
-            sys.stderr.write(f"Group {group} is allowed. Granting access\n")
+            print(f"Group {group} is allowed. Granting access\n")
             return True
     # Allow group member
     for group in _parse_groups(claim):
-        #commented for debugging denial !!!
-        #if group == 'ei':
-        #    sys.stderr.write(f"HQ is always allowed. Granting access\n")
-        #    return True
+        commented for debugging denial !!!
+        if group == 'ei':
+            print(f"Download by staff is always allowed. Granting access\n")
+            return True
         if group in allowed:
-            sys.stderr.write(f"Group {group} is allowed. Granting access\n")
+            print(f"Group {group} is allowed. Granting access\n")
             return True
     # Otherwise deny access
-    sys.stderr.write(f"Access denied ")
+    print(f"Access denied ")
     return False
