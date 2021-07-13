@@ -21,7 +21,7 @@ Last modifications
 carl-fredrik.enell@eiscat.se
 """
 
-from socketserver import BaseServer, ThreadingMixIn
+# from socketserver import BaseServer, ThreadingMixIn
 from http.server import *
 from urllib.parse import urlparse, parse_qs
 import os
@@ -37,7 +37,7 @@ portno = 37009
 if len(sys.argv) > 1:
     portno = int(sys.argv[1])
 
-data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
+# data_server_ssl_ca_path = os.environ["DATA_SERVER_SSL_CA_PATH"]
 data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
 data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
 client_url = os.environ["OIDC_URL"]
@@ -76,20 +76,20 @@ def GETorHEAD(self):
     ans = requests.get(f"{client_url}?token={access_token}", auth=(client_id, client_secret), headers={"Content-Type": "application/x-www-form-urlencoded"})
     if not ans.ok:
         sys.stderr.write("Could not connect to OIDC server")
-        self.send_response(400) # Auth failed
+        self.send_error(400, message="400 Authentication failure", explain="Could not connect to Checkin.") # Auth failed
     if not (ans.json()['active']):
-        self.wfile.write("No active login session. Make sure that you are logged in")
-        self.send_response(400) # Auth failed
+        sys.stderr.write("No active login session")
+        self.send_error(400, message="400 No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
     try:
         exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'].strip('+0000'))
         assert exp_time >= datetime.datetime.utcnow()
     except:
-        self.wfile.write("Token expired")
-        self.send_response(401) # Auth invalid
+        self.send_error(401, message="401 Got invalid authentication", explain="Access token in URL has expired.") # Auth invalid
     try:
         claim = ans.json()['eduperson_entitlement']
     except:
         claim = ''
+        self.send_error(401, message="401 Got invalid authentication", explain="OIDC Claim eduperson_entitlement is missing") # Auth invalid
 
     # Selected output format valid?
     format = os.path.splitext(fname)[1][1:]
@@ -121,7 +121,7 @@ def GETorHEAD(self):
             l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
             assert eiscat_auth.auth_download(claim, l.date, l.account, l.country)
     except AssertionError:
-        self.send_response(403) #Access forbidden
+        self.send_error(403, message="403 Not authorized", explain=f"You are not authorized to download this file. It is owned by: {country + ' ' + account}") #Access forbidden
         sys.stderr.write(f"Access denied for user {ans.json()['email']}")
         return
     finally:
@@ -129,6 +129,7 @@ def GETorHEAD(self):
         del sql
     try:
         self.send_response(200)
+        self.end_headers()
     except error as why:
         sys.stderr.write(f"{why} -- Timed out?")
         return
@@ -162,23 +163,26 @@ class ReqHandler(BaseHTTPRequestHandler):
         GETorHEAD(self)
 
 
-class InetdHTTPServer(BaseServer):
-    def __init__(self, requestHandler):
-        BaseServer.__init__(self, None, requestHandler)
+##-class InetdHTTPServer(BaseServer):
+##-    def __init__(self, requestHandler):
+##-        BaseServer.__init__(self, None, requestHandler)
+##-
+##-    def get_request(self):
+##-        import socket
+##-        s = socket.fromfd(0, socket.AF_INET, socket.SOCK_STREAM)
+##-        try:
+##-            peer = s.getpeername()
+##-        except socket.error:
+##-            peer = ('127.0.0.1', 0)
+##-        return s, peer
+##-
 
-    def get_request(self):
-        import socket
-        s = socket.fromfd(0, socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            peer = s.getpeername()
-        except socket.error:
-            peer = ('127.0.0.1', 0)
-        return s, peer
 
-class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    """ This handles each request in a separate thread """
-    #def handle_error(self, request, client_address):
-    #   print ('ERROR:', client_address)
+##-class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+##-    """ This handles each request in a separate thread """
+##-    #def handle_error(self, request, client_address):
+##-    #   print ('ERROR:', client_address)
+##-
 
 def arcname(path):
     return '/'.join(path.split('/')[-2:])
@@ -210,19 +214,20 @@ def send_archive(paths, format, fname, fout):
                 packer.write(tfile, arc)
     packer.close()
 
-def run_from_inetd():
-    httpd = InetdHTTPServer(ReqHandler)
-    httpd.handle_request()
+##def run_from_inetd():
+##    httpd = InetdHTTPServer(ReqHandler)
+##    httpd.handle_request()
 
 def run_as_server():
     server_address = ('', portno)
-    httpd = ThreadedHTTPServer(server_address, ReqHandler)
+    httpd = ThreadingHTTPServer(server_address, ReqHandler)
     if portno == 37009:
         print(f"Enabling SSL on port {portno}")
         import ssl
-        sslcontext = ssl.create_default_context(cafile=data_server_ssl_ca_path,purpose=ssl.Purpose.CLIENT_AUTH)
-        sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
-        httpd.socket = sslcontext.wrap_socket(httpd.socket, server_side=True)
+        # sslcontext = ssl.create_default_context(cafile=data_server_ssl_ca_path,purpose=ssl.Purpose.CLIENT_AUTH)
+        # sslcontext.load_cert_chain(certfile=data_server_ssl_cert_path, keyfile=data_server_ssl_key_path)
+        # httpd.socket = sslcontext.wrap_socket(httpd.socket, server_side=True)
+        httpd.socket = ssl.wrap_socket(httpd.socket, keyfile=data_server_ssl_key_path, certfile=data_server_ssl_cert_path, server_side=True)
     print(f'Starting server on port {portno}')
     httpd.serve_forever()
 
