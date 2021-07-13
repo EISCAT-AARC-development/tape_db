@@ -136,7 +136,6 @@ def GETorHEAD(self):
         del sql
     try:
         self.send_response(200)
-        self.end_headers()
     except error as why:
         print(f"{why} -- Timed out?")
         return
