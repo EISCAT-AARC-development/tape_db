@@ -97,7 +97,6 @@ def auth_download(claim, expdate, account, country):
             return True
     # Allow group member
     for group in _parse_groups(claim):
-        commented for debugging denial !!!
         if group == 'ei':
             print(f"Download by staff is always allowed. Granting access\n")
             return True
