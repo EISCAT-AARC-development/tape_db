@@ -98,8 +98,8 @@ def auth_download(claim, expdate, account, country):
             return True
     # Allow group member
     for group in _parse_groups(claim):
-        if group in ('ei', 'dev'):
-            sys.stderr.write(f"Group {group} is always allowed. Granting access\n")
+        if group == 'ei':
+            sys.stderr.write(f"HQ is always allowed. Granting access\n")
             return True
         if group in allowed:
             sys.stderr.write(f"Group {group} is allowed. Granting access\n")
