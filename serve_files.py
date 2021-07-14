@@ -180,7 +180,7 @@ def send_archive(paths, format, fname, fout):
         import tarfile
         import socket
         mode = format == 'tgz' and 'w|gz' or 'w|'
-        packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode)
+        packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode, format=tarfile.GNU_FORMAT)
         for path in paths:
             try:
                 packer.add(path, arcname(path))
