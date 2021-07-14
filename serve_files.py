@@ -128,7 +128,7 @@ def GETorHEAD(self):
             assoc = l.account
         else:
             assoc = l.country
-        self.send_error(403, message="403 Not authorized", explain=f"You are not authorized to download data from this experiment. Access is limited to: {assoc}") #Access forbidden
+        self.send_error(403, message="403 Not authorized", explain=f"You are not authorized to download data from this experiment. Access is restricted to: {assoc}") #Access forbidden
         try:
             who = ans.json()['email']
         except:
