@@ -60,6 +60,14 @@ def auth_download(claim, expdate, account, country):
 
     Return: True or False
     """
+    vo_groups = _parse_groups(claim)
+    ### Verify VO membership
+    try:
+        assert 'members' in vo_groups
+    except AssertionError:
+        print("Download attempt by non VO member")
+        return False
+    
     ### Check age of experiment
     # Allow > 1 year
     timediff = datetime.datetime.now() - datetime.datetime.fromtimestamp(expdate)
@@ -99,7 +107,7 @@ def auth_download(claim, expdate, account, country):
             print(f"Group {group} is allowed. Granting access\n")
             return True
     # Allow group member
-    for group in _parse_groups(claim):
+    for group in vo_groups:
         if group == 'ei':
             print(f"Download by staff is always allowed. Granting access\n")
             return True
