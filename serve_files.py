@@ -125,11 +125,15 @@ def GETorHEAD(self):
             assert eiscat_auth.auth_download(claim, l.date, l.account, l.country)
     except AssertionError:
         if not l.account is None:
-            owner = l.account
+            assoc = l.account
         else:
-            owner = l.country
-        self.send_error(403, message="403 Not authorized", explain=f"You are not authorized to download data from this experiment. It is owned by: {owner}") #Access forbidden
-        print(f"Access denied for user {ans.json()['email']}")
+            assoc = l.country
+        self.send_error(403, message="403 Not authorized", explain=f"You are not authorized to download data from this experiment. Access is limited to: {assoc}") #Access forbidden
+        try:
+            who = ans.json()['email']
+        except:
+            who = ip
+        print(f"Access denied for user {who}")
         return
     finally:
         sql.close()
