@@ -84,7 +84,7 @@ def GETorHEAD(self):
         print("No active login session")
         self.send_error(400, message="400 No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
     try:
-        exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'].strip('+0000'))
+        exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
         assert exp_time >= datetime.datetime.utcnow()
     except:
         self.send_error(401, message="401 Got invalid authentication", explain="Access token in URL has expired.") # Auth invalid
