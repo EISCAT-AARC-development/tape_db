@@ -37,11 +37,14 @@ def _parse_groups(claim):
     c = re.compile(claim_pat)
     for cl in claim:
         m = c.match(cl)
-        group = m.groupdict()['group'].lower()
-        if group in mod_codes:
-            group = mod_codes[group]
-        if group not in groups:
-            groups.append(group)
+        try:
+            group = m.groupdict()['group'].lower()
+            if group in mod_codes:
+                group = mod_codes[group]
+            if group not in groups:
+                groups.append(group)
+        except:
+            pass
     return groups
 
 def auth_download(claim, expdate, account, country):
