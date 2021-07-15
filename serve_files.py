@@ -122,13 +122,14 @@ def GETorHEAD(self):
         for path in paths:
             url = tapelib.create_raidurl(tapelib.nodename(), path)
             l = sql.select_experiment_storage("location = %s", (url,), what="account, country, UNIX_TIMESTAMP(start) AS date, type")[0]
-            assert eiscat_auth.auth_download(claim, l.date, l.account, l.country)
+            (allowed, comment) =  eiscat_auth.auth_download(claim, l.date, l.account, l.country)
+            assert allowed
     except AssertionError:
         if not l.account is None:
             assoc = l.account
         else:
             assoc = l.country
-        self.send_error(403, message="403 Not authorized", explain=f"You are not authorized to download data from this experiment. Access is restricted to: {assoc}") #Access forbidden
+        self.send_error(403, message="403 Not authorized", explain=comment) #Access forbidden
         try:
             who = ans.json()['email']
         except:
