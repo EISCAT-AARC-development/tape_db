@@ -33,7 +33,7 @@ def _parse_groups(claim):
     }
     groups = []
     # Match pattern
-    claim_pat = r'urn\:mace\:egi\.eu\:group\:group\:eiscat\.se\:(?P<group>\w+)\:'
+    claim_pat = r'urn\:mace\:egi\.eu\:group\:eiscat\.se\:(?P<group>\w+)\:'
     c = re.compile(claim_pat)
     for cl in claim:
         m = c.match(cl)
