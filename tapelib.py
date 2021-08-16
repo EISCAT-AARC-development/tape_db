@@ -389,7 +389,7 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
     return conn
 
 def openmaster():
-    if nodename() in ("data", "data1", "eiscathq"):
+    if nodename() in ("data", "eiscathq"):
         return openMySQL(host="192.168.11.9", passwd='ks902jf4', db='disk_archive', user='archiver')
     else:
         return openMySQL(host="localhost", passwd='ks902jf4', db='disk_archive', user='archiver')
