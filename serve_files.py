@@ -44,7 +44,7 @@ client_secret = os.environ["OIDC_CLIENT_SECRET"]
 
 
 if portno == 37009:
-    print("Using SSL")
+    print(f"serve_files: {datetime.datetime.utcnow().isoformat()} Using SSL")
     print(f"SSL cert path: {data_server_ssl_cert_path}")
     print(f"SSL key path: {data_server_ssl_key_path}")
 
@@ -56,7 +56,7 @@ def GETorHEAD(self):
     netst = 'netstat -nt | grep %d | grep ESTABLISHED | grep %s | wc -l' % (portno, ip)
     nconn = subprocess.Popen(['bash', '-c', netst], stdout=subprocess.PIPE).communicate()[0]
     if ip != "192.168.11.6" and int(nconn) > 9:
-        print(f"Too many connections: {ip}")
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Too many connections: {ip}")
         self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write('<meta http-equiv="Refresh" content="9;url=javascript:history.go(-1)">'.encode('utf-8'))
@@ -78,10 +78,10 @@ def GETorHEAD(self):
     # OIDC Introspection of token
     ans = requests.get(f"{client_url}?token={access_token}", auth=(client_id, client_secret), headers={"Content-Type": "application/x-www-form-urlencoded"})
     if not ans.ok:
-        print("Could not connect to OIDC server")
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Could not connect to OIDC server")
         self.send_error(400, message="400 Authentication failure", explain="Could not connect to Checkin.") # Auth failed
     if not (ans.json()['active']):
-        print("No active login session")
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} No active login session")
         self.send_error(400, message="400 No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
     try:
         exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
@@ -94,20 +94,12 @@ def GETorHEAD(self):
         claim = ''
         self.send_error(401, message="401 Got invalid authentication", explain="OIDC Claim eduperson_entitlement is missing") # Auth invalid
 
-    # Selected output format valid?
-    format = os.path.splitext(fname)[1][1:]
-    try:
-        assert format in ('tar', 'tgz', 'zip')
-    except AssertionError:
-        print(f"Unknown format: {ip} {fname}")
-        return
-
     # Get data locations
     eids = q['id']
     try:
         sql = tapelib.opendefault()
     except:
-        print("Could not open database connection")
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Could not open database connection")
     paths = []
     machine = tapelib.nodename()
     for eid in eids:
@@ -130,11 +122,7 @@ def GETorHEAD(self):
         else:
             assoc = l.country
         self.send_error(403, message="403 Not authorized", explain=comment) #Access forbidden
-        try:
-            who = ans.json()['email']
-        except:
-            who = ip
-        print(f"Access denied for user {who}")
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Access denied for {ip} with entitlement {claim}. {comment}")
         return
     finally:
         sql.close()
@@ -145,22 +133,27 @@ def GETorHEAD(self):
         print(f"{why} -- Timed out?")
         return
 
+    
+    # Selected output format valid?
+    format = os.path.splitext(fname)[1][1:]
+    try:
+        assert format in ('tar', 'tgz', 'zip')
+    except AssertionError:
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Unknown format: {ip} {fname}")
+        self.send_error(415, message="Unknown format", explain=f"Requested file format {format} is not supporte by this server.")
+        return
+
+    
     # Send output
     import mimetypes
     mime, enc = mimetypes.guess_type(fname)
-    if False:   # debug
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(f"Filename:  {fname}".encode('utf-8'))
-        self.wfile.write(f"Mime: {mime} encoding {enc}".encode('utf-8'))
-        self.wfile.write('\n'.join(paths).encode('utf-8'))
-    else:
-        self.send_header("Content-type", mime)
-        self.send_header("Content-Disposition", f"attachment; filename={fname}")
-        if enc:
-            self.send_header("Content-encoding", enc)
-        self.end_headers()
-        send_archive(paths, format, fname, self.wfile)
+    print(f"serve_files {datetime.datetime.utcnow().isoformat()} Sending data to user with entitlement: {claim}. {comment}")
+    self.send_header("Content-type", mime)
+    self.send_header("Content-Disposition", f"attachment; filename={fname}")
+    if enc:
+        self.send_header("Content-encoding", enc)
+    self.end_headers()
+    send_archive(paths, format, fname, self.wfile)
 
 
 class ReqHandler(BaseHTTPRequestHandler):
@@ -207,10 +200,10 @@ def run_as_server():
     server_address = ('', portno)
     httpd = ThreadingHTTPServer(server_address, ReqHandler)
     if portno == 37009:
-        print(f"Enabling SSL on port {portno}")
+        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Enabling SSL on port {portno}")
         import ssl
         httpd.socket = ssl.wrap_socket(httpd.socket, keyfile=data_server_ssl_key_path, certfile=data_server_ssl_cert_path, server_side=True)
-    print(f'Starting server on port {portno}')
+    print(f'serve_files {datetime.datetime.utcnow().isoformat()} Starting server on port {portno}')
     httpd.serve_forever()
 
 if __name__ == '__main__':

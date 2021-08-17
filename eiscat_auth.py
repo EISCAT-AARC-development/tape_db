@@ -65,15 +65,13 @@ def auth_download(claim, expdate, account, country):
     try:
         assert 'members' in vo_groups
     except AssertionError:
-        print("Download attempt by non VO member")
-        return (False, 'You are not a member of the EISCAT VO. Please sign up.')
+        return (False, 'You are not a member of the EISCAT VO. Please sign up.\n')
     
     ### Check age of experiment
     # Allow > 1 year
     timediff = datetime.datetime.now() - datetime.datetime.fromtimestamp(expdate)
     if timediff.days > 365:
-        print("Access granted: old data\n")
-        return (True, '')
+        return (True, 'Access granted: old data\n')
 
     ### Merge Account and Country codes to one unique list
     allowed = []
@@ -95,25 +93,19 @@ def auth_download(claim, expdate, account, country):
     except:
         pass
     
-    print(f"Allowed groups: {allowed}")
     ### Check download permission by group
     # Allow if no account information in db
     if len(allowed) == 0:
-        print("Allowed groups empty. Granting access\n")
-        return (True, '')
+        return (True, 'Allowed groups empty. Granting access\n')
     # Allow AA and CP
     for group in ('aa', 'cp'):
         if group in allowed:
-            print(f"Group {group} is allowed. Granting access\n")
-            return (True, '')
+            return (True, f"Group {group} is allowed. Granting access\n")
     # Allow group member
     for group in vo_groups:
         if group == 'ei':
-            print(f"Download by staff is always allowed. Granting access\n")
-            return (True, '')
+            return (True, 'Download by staff is always allowed. Granting access\n')
         if group in allowed:
-            print(f"Group {group} is allowed. Granting access\n")
-            return (True, '')
+            return (True, f'Group {group} is allowed. Granting access\n')
     # Otherwise deny access
-    print(f"Access denied ")
     return (False, f'Access to this experiment is restricted to {allowed}')
