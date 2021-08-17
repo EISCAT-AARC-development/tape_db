@@ -147,14 +147,14 @@ def GETorHEAD(self):
     # Send output
     import mimetypes
     mime, enc = mimetypes.guess_type(fname)
-    print(f"serve_files {datetime.datetime.utcnow().isoformat()} Sending data to user with entitlement: {claim}. {comment}")
+    print(f"serve_files {datetime.datetime.utcnow().isoformat()} Sending data to {ip} with entitlement: {claim}. {comment}")
     self.send_header("Content-type", mime)
     self.send_header("Content-Disposition", f"attachment; filename={fname}")
     if enc:
         self.send_header("Content-encoding", enc)
     self.end_headers()
     send_archive(paths, format, fname, self.wfile)
-
+    print(f"serve_files {datetime.datetime.utcnow().isoformat()} Done sending data to {ip}")
 
 class ReqHandler(BaseHTTPRequestHandler):
     def do_PING(self):
