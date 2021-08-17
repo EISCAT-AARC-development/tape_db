@@ -79,20 +79,20 @@ def GETorHEAD(self):
     ans = requests.get(f"{client_url}?token={access_token}", auth=(client_id, client_secret), headers={"Content-Type": "application/x-www-form-urlencoded"})
     if not ans.ok:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Could not connect to OIDC server")
-        self.send_error(400, message="400 Authentication failure", explain="Could not connect to Checkin.") # Auth failed
+        self.send_error(500, message="Introspection failure", explain="Could not connect to EGI Checkin OIDC server.") # Auth failed
     if not (ans.json()['active']):
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} No active login session")
-        self.send_error(400, message="400 No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
+        self.send_error(401, message="No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
     try:
         exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
         assert exp_time >= datetime.datetime.utcnow()
     except:
-        self.send_error(401, message="401 Got invalid authentication", explain="Access token in URL has expired.") # Auth invalid
+        self.send_error(401, message="Invalid authentication", explain="Access token in URL has expired.") # Auth invalid
     try:
         claim = ans.json()['eduperson_entitlement']
     except:
         claim = ''
-        self.send_error(401, message="401 Got invalid authentication", explain="OIDC Claim eduperson_entitlement is missing") # Auth invalid
+        self.send_error(401, message="Invalid authentication", explain="OIDC Claim eduperson_entitlement is missing") # Auth invalid
 
     # Get data locations
     eids = q['id']
@@ -121,7 +121,7 @@ def GETorHEAD(self):
             assoc = l.account
         else:
             assoc = l.country
-        self.send_error(403, message="403 Not authorized", explain=comment) #Access forbidden
+        self.send_error(403, message="Not authorized", explain=comment) #Access forbidden
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Access denied for {ip} with entitlement {claim}. {comment}")
         return
     finally:
