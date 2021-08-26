@@ -80,19 +80,23 @@ def GETorHEAD(self):
     if not ans.ok:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Could not connect to OIDC server")
         self.send_error(500, message="Introspection failure", explain="Could not connect to EGI Checkin OIDC server.") # Auth failed
+        return
     if not (ans.json()['active']):
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} No active login session")
         self.send_error(401, message="No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
+        return
     try:
         exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
         assert exp_time >= datetime.datetime.utcnow()
     except:
         self.send_error(401, message="Invalid authentication", explain="Access token in URL has expired.") # Auth invalid
+        return
     try:
         claim = ans.json()['eduperson_entitlement']
     except:
         claim = ''
         self.send_error(401, message="Invalid authentication", explain="OIDC Claim eduperson_entitlement is missing") # Auth invalid
+        return
 
     # Get data locations
     eids = q['id']
@@ -100,6 +104,8 @@ def GETorHEAD(self):
         sql = tapelib.opendefault()
     except:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Could not open database connection")
+        self.send_error(500, message="Server failure", explain="Could not connect to file catalogue database.") # Auth failed
+        return
     paths = []
     machine = tapelib.nodename()
     for eid in eids:
@@ -131,9 +137,9 @@ def GETorHEAD(self):
         self.send_response(200)
     except error as why:
         print(f"{why} -- Timed out?")
+        self.send_error(500, message="Server failure", explain="Timeout sending response.") # Auth failed
         return
 
-    
     # Selected output format valid?
     format = os.path.splitext(fname)[1][1:]
     try:
@@ -142,7 +148,6 @@ def GETorHEAD(self):
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Unknown format: {ip} {fname}")
         self.send_error(415, message="Unknown format", explain=f"Requested file format {format} is not supporte by this server.")
         return
-
     
     # Send output
     import mimetypes
