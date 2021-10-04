@@ -428,21 +428,21 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
 
 def openmaster():
         if nodename() in ("data1","eiscathq"):
-		return openMySQL(host="192.168.11.5",passwd='ks902jf4',db='disk_archive',user='archiver')
+		return openMySQL(host="192.168.11.5",passwd='**SECRET',db='*CHANGEME*',user='*CHANGEME*')
 	else:
-                # CFE: open the local slave here on LXC data.eiscat.se. Fixme; add proper check
-		return openMySQL(host="localhost", passwd='ks902jf4',db='disk_archive',user='archiver')
+                # CFE: open the local slave.
+		return openMySQL(host="localhost", passwd='**SECRET**',db='**CHANGEME**',user='**CHANGEME**')
 		raise
 
 def opendefault():
         #if nodename() in ("eiscathq","portal"):
-	#return openMySQL(host=os.environ['MYSQL_HOST'],db='disk_archive',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
+	#return openMySQL(host=os.environ['MYSQL_HOST'],db='**CHANGEME**',user=os.environ['MYSQL_USER'], passwd=os.environ['MYSQL_PWD'])
 	#elif nodename() in ("data1"):
-	#	return openMySQL(host="192.168.11.5",db='disk_archive',user='www')
+	#	return openMySQL(host="192.168.11.5",db='**CHANGEME**',user='**CHANGEME**')
 	#else:
 	#raise
-        # CFE: quick change to use local slave here on LXC data.eiscat.se
-        return openMySQL(host="localhost",db='disk_archive',user='www')
+        # CFE: quick change to use local slave
+        return openMySQL(host="localhost",db='**CHANGEME**',user='**CHANGEME**')
 
 ############# URL handling routines ########################
 _cached_nodename = None
