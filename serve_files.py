@@ -55,22 +55,10 @@ if portno == 37009:
     print(f"SSL cert path: {data_server_ssl_cert_path}")
     print(f"SSL key path: {data_server_ssl_key_path}")
 ###
-
     
 def GETorHEAD(self):
     import socket
-    import subprocess
     ip = socket.gethostbyname(self.client_address[0])
-    # Maximum 9 connections
-    netst = 'netstat -nt | grep %d | grep ESTABLISHED | grep %s | wc -l' % (portno, ip)
-    nconn = subprocess.Popen(['bash', '-c', netst], stdout=subprocess.PIPE).communicate()[0]
-    if ip != "192.168.11.6" and int(nconn) > 9:
-        print(f"serve_files {datetime.datetime.utcnow().isoformat()} Too many connections: {ip}")
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        self.wfile.write('<meta http-equiv="Refresh" content="9;url=javascript:history.go(-1)">'.encode('utf-8'))
-        self.wfile.write(f"{ip} has reached maximum number of parallel streams".encode('utf-8'))
-        return
 
     # Get parameters from query in URL
     p = urlparse(self.path)
