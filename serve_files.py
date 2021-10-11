@@ -32,22 +32,31 @@ import eiscat_auth
 import requests
 
 
-
+### Configuration
 if len(sys.argv) > 1:
     portno = int(sys.argv[1])
+else:
+    try:
+        portno = os.environ["PORT_NO"]
+    except:
+        portno = 37009
 
-data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
-data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
+print(f"Configured port {portno}")
+
 client_url = os.environ["OIDC_URL"]
 client_id = os.environ["OIDC_CLIENT_ID"]
 client_secret = os.environ["OIDC_CLIENT_SECRET"]
-portno = os.environ["PORT_NO"]
-
+data_server_ssl_cert_path = ""
+data_server_ssl_key_path = ""
 if portno == 37009:
+    data_server_ssl_cert_path = os.environ["DATA_SERVER_SSL_CERT_PATH"]
+    data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
     print(f"serve_files: {datetime.datetime.utcnow().isoformat()} Using SSL")
     print(f"SSL cert path: {data_server_ssl_cert_path}")
     print(f"SSL key path: {data_server_ssl_key_path}")
+###
 
+    
 def GETorHEAD(self):
     import socket
     import subprocess
