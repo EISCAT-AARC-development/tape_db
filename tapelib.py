@@ -11,7 +11,7 @@ Carl-Fredrik Enell, EISCAT
 import urllib.parse
 import warnings
 from functools import reduce
-from os import env
+from os import environ
 
 tape_tables = {
     'experiments': '''
@@ -390,10 +390,10 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
     return conn
 
 def openmaster():
-    return openMySQL(host=env["DB_HOST"], db=env["DB_NAME"], user=env["DB_ADM_USER"], passwd=env["DB_ADM_PWD"])
+    return openMySQL(host=environ["DB_HOST"], db=environ["DB_NAME"], user=environ["DB_ADM_USER"], passwd=environ["DB_ADM_PWD"])
     
 def opendefault():
-    return openMySQL(host=env["DB_HOST"], db=env["DB_NAME"], user=env["DB_USER"])
+    return openMySQL(host=environ["DB_HOST"], db=environ["DB_NAME"], user=environ["DB_USER"])
 
 ############# URL handling routines ########################
 _cached_nodename = None
