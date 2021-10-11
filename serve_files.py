@@ -37,7 +37,7 @@ if len(sys.argv) > 1:
     portno = int(sys.argv[1])
 else:
     try:
-        portno = os.environ["PORT_NO"]
+        portno = int(os.environ["PORT_NO"])
     except:
         portno = 37009
 
