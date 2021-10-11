@@ -31,7 +31,7 @@ import datetime
 import eiscat_auth
 import requests
 
-portno = 37009
+
 
 if len(sys.argv) > 1:
     portno = int(sys.argv[1])
@@ -41,7 +41,7 @@ data_server_ssl_key_path = os.environ["DATA_SERVER_SSL_KEY_PATH"]
 client_url = os.environ["OIDC_URL"]
 client_id = os.environ["OIDC_CLIENT_ID"]
 client_secret = os.environ["OIDC_CLIENT_SECRET"]
-
+portno = os.environ["PORT_NO"]
 
 if portno == 37009:
     print(f"serve_files: {datetime.datetime.utcnow().isoformat()} Using SSL")
