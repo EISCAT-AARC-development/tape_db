@@ -11,6 +11,7 @@ Carl-Fredrik Enell, EISCAT
 import urllib.parse
 import warnings
 from functools import reduce
+from os import env
 
 tape_tables = {
     'experiments': '''
@@ -389,13 +390,10 @@ def openMySQL_SSH(host, port=3306, interactive=0, **params):
     return conn
 
 def openmaster():
-    if nodename() in ("data", "eiscathq"):
-        return openMySQL(host="192.168.11.9", passwd='ks902jf4', db='disk_archive', user='archiver')
-    else:
-        return openMySQL(host="localhost", passwd='ks902jf4', db='disk_archive', user='archiver')
-
+    return openMySQL(host=env["DB_HOST"], db=env["DB_NAME"], user=env["DB_ADM_USER"], passwd=env["DB_ADM_PWD"])
+    
 def opendefault():
-    return openMySQL(host='192.168.11.9', db='disk_archive', user='www')
+    return openMySQL(host=env["DB_HOST"], db=env["DB_NAME"], user=env["DB_USER"])
 
 ############# URL handling routines ########################
 _cached_nodename = None
