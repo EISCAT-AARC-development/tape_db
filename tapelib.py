@@ -617,8 +617,7 @@ if __name__ == '__main__':
         print(len(n-m))
     elif cmd == 'addquota':
         sql = openmaster()
-        import os
-        list = open(os.environ['HOME']+'/quota.txt').read()
+        list = open(environ['HOME']+'/quota.txt').read()
         for line in list.splitlines():
             l = line.split()
             ls = sql.select_experiment_storage("experiments.antenna=%s AND experiment_name=%s AND start=%s AND end=%s AND type='data'", (l[1], l[0], l[2]+' '+l[3], l[4]+' '+l[5]), what="resource.resource_id AS r,account")
