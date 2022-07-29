@@ -57,12 +57,11 @@ if portno == 37009:
 ###
     
 def GETorHEAD(self):
-    import socket
-    ip = socket.gethostbyname(self.client_address[0])
-
     # Get parameters from query in URL
     p = urlparse(self.path)
     q = parse_qs(p.query)
+    ip = f"Real IP: {self.headers['X-Real-IP']} Forwarded for: {self.headers['X-Forwarded-For']}"
+
     try:
         fname = q['fname'][0]
     except:
@@ -167,6 +166,10 @@ class ReqHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
         GETorHEAD(self)
+
+    def log_request(self, code):
+        # This suppresses standard logging; URLs contain access tokens.
+        pass
 
 def arcname(path):
     return '/'.join(path.split('/')[-2:])
