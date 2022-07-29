@@ -70,19 +70,22 @@ def GETorHEAD(self):
         access_token = q['access_token'][0]
     except:
         access_token = ''
-        
+    
     # OIDC Introspection of token
-    ans = requests.get(f"{client_url}?token={access_token}", auth=(client_id, client_secret), headers={"Content-Type": "application/x-www-form-urlencoded"})
+    # ans = requests.get(f"{client_url}?token={access_token}", auth=requests.auth.HTTPBasicAuth(client_id, client_secret), headers={"Content-Type": "application/x-www-form-urlencoded"})
+    postdata = {"client_id": client_id, "client_secret": client_secret, "token": access_token}
+    ans = requests.post(url=client_url, data=postdata)
     if not ans.ok:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Could not connect to OIDC server")
-        self.send_error(500, message="Introspection failure", explain="Could not connect to EGI Checkin OIDC server.") # Auth failed
+        self.send_error(ans.status_code, message="OIDC Introspection failure", explain=ans.reason) # Auth failed
         return
     if not (ans.json()['active']):
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} No active login session")
         self.send_error(401, message="No active login session", explain="Something is wrong: Make sure you are logged in.") # Auth failed
         return
     try:
-        exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
+        # exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
+        exp_time = datetime.datetime.fromtimestamp(ans.json()['exp'])
         assert exp_time >= datetime.datetime.utcnow()
     except:
         self.send_error(401, message="Invalid authentication", explain="Access token in URL has expired.") # Auth invalid
