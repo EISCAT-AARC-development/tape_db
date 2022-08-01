@@ -9,7 +9,7 @@ It accepts queries of the form
 https://machine:portno?id=<int>&id=<int>&fname=<str>.tar&access_token=<oidc token>
 where
 id: resource_id:s as in EISCAT SQL file catalogue
-fname: desired name and format of the output archive, <experiment name>.(tar|tbz2|tgz|zip)
+fname: desired name and format of the output archive, <experiment name>.(tar|zip)
 access_token: JWT provided by EGI Checkin for authenticated user
 
 Additions 2021-2022: Access token, OIDC introspection and access authorization check
@@ -138,7 +138,7 @@ def GETorHEAD(self):
     # Selected output format valid?
     format = os.path.splitext(fname)[1][1:]
     try:
-        assert format in ('tbz2', 'tar', 'tgz', 'zip')
+        assert format in ('tar', 'zip')
     except AssertionError:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Unknown format: {ip} {fname}")
         self.send_error(415, message="Unknown format", explain=f"Requested file format {format} is not supporte by this server.")
@@ -174,17 +174,10 @@ def arcname(path):
     return '/'.join(path.split('/')[-2:])
 
 def send_archive(paths, format, fname, fout):
-    if format in ('tbz2', 'tar', 'tgz'):
+    if format == 'tar':
         import tarfile
         import socket
-        if format == 'tbz2':
-            mode = 'w|bz2'
-        elif format == 'tgz':
-            mode = 'w|gz'
-        else:
-            mode = 'w|'
-
-        packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode, format=tarfile.GNU_FORMAT)
+        packer = tarfile.open(name=fname, fileobj=fout, mode='w|', format=tarfile.GNU_FORMAT)
         for path in paths:
             try:
                 packer.add(path, arcname(path))
