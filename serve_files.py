@@ -138,7 +138,7 @@ def GETorHEAD(self):
     # Selected output format valid?
     format = os.path.splitext(fname)[1][1:]
     try:
-        assert format in ('bz2', 'tar', 'tgz', 'zip')
+        assert format in ('tbz2', 'tar', 'tgz', 'zip')
     except AssertionError:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Unknown format: {ip} {fname}")
         self.send_error(415, message="Unknown format", explain=f"Requested file format {format} is not supporte by this server.")
