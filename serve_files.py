@@ -1,23 +1,19 @@
 #!/usr/bin/env -S python3 -u
-
-# the purpose of this file is to listen on a tcp port and handle
-# download requests by HTTPS query on the form
-# ?id=3&id=5&id=6&fname=output.tar&auth_token=<OIDC Token>
-# the id is the resource_id and it is the
-# responsibility for this script to select an appropriate
-# source to fetch from.
-
 """ 
 EISCAT File server
 
 This script listens for https requests on a tcp port (default 37009)
 and prepares data for download
 
-Additions 2021: Access token, OIDC introspection and access authorization check
-URL format: https://machine:portno?id=<int>&id=<int>&fname=<str>.tar&access_token=<oidc token>
+It accepts queries of the form
+https://machine:portno?id=<int>&id=<int>&fname=<str>.tar&access_token=<oidc token>
+where
+id: resource_id:s as in EISCAT SQL file catalogue
+fname: desired name and format of the output archive, <experiment name>.(tar|tbz2|tgz|zip)
+access_token: JWT provided by EGI Checkin for authenticated user
 
-Last modifications
-(C) Carl-Fredrik Enell 2021
+Additions 2021-2022: Access token, OIDC introspection and access authorization check
+Last modifications (C) Carl-Fredrik Enell 2022
 carl-fredrik.enell@eiscat.se
 """
 
@@ -86,9 +82,9 @@ def GETorHEAD(self):
     try:
         # exp_time = datetime.datetime.fromisoformat(ans.json()['expires_at'][0:19])
         exp_time = datetime.datetime.fromtimestamp(ans.json()['exp'])
-        assert exp_time >= datetime.datetime.utcnow()
+        assert exp_time > datetime.datetime.utcnow()
     except:
-        self.send_error(401, message="Invalid authentication", explain="Access token in URL has expired.") # Auth invalid
+        self.send_error(401, message="Invalid authentication", explain="Access token in request has expired.") # Auth invalid
         return
     try:
         claim = ans.json()['eduperson_entitlement']
@@ -142,7 +138,7 @@ def GETorHEAD(self):
     # Selected output format valid?
     format = os.path.splitext(fname)[1][1:]
     try:
-        assert format in ('tar', 'tgz', 'zip')
+        assert format in ('bz2', 'tar', 'tgz', 'zip')
     except AssertionError:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Unknown format: {ip} {fname}")
         self.send_error(415, message="Unknown format", explain=f"Requested file format {format} is not supporte by this server.")
@@ -178,11 +174,16 @@ def arcname(path):
     return '/'.join(path.split('/')[-2:])
 
 def send_archive(paths, format, fname, fout):
-    if format in ('tar', 'tgz'):
+    if format in ('tbz2', 'tar', 'tgz'):
         import tarfile
         import socket
-        mode = format == 'tgz' and 'w|gz' or 'w|'
-        packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode, format=tarfile.GNU_FORMAT)
+        if format == 'tbz2':
+            mode = 'w|bz2'
+        elif format == 'tgz':
+            mode = 'w|gz'
+        else:
+            mode = 'w|'
+            packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode, format=tarfile.GNU_FORMAT)
         for path in paths:
             try:
                 packer.add(path, arcname(path))
@@ -202,6 +203,8 @@ def send_archive(paths, format, fname, fout):
                 files.extend([(tfile+'/'+m, arc+'/'+m) for m in content])
             else:
                 packer.write(tfile, arc)
+    else:
+        raise ValueError("Checkme: should never end up here since file type was asserted above")
     packer.close()
 
 def run_as_server():
