@@ -183,7 +183,8 @@ def send_archive(paths, format, fname, fout):
             mode = 'w|gz'
         else:
             mode = 'w|'
-            packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode, format=tarfile.GNU_FORMAT)
+
+        packer = tarfile.open(name=fname.encode('utf-8'), fileobj=fout, mode=mode, format=tarfile.GNU_FORMAT)
         for path in paths:
             try:
                 packer.add(path, arcname(path))
