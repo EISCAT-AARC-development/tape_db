@@ -207,7 +207,11 @@ def run_as_server():
     if portno == 37009:
         print(f"serve_files {datetime.datetime.utcnow().isoformat()} Enabling SSL on port {portno}")
         import ssl
-        httpd.socket = ssl.wrap_socket(httpd.socket, keyfile=data_server_ssl_key_path, certfile=data_server_ssl_cert_path, server_side=True)
+        sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+        sslcontext.minimum_version = ssl.TLSVersion.TLSv1_2
+        sslcontext.maximum_version = ssl.TLSVersion.TLSv1_3
+        sslcontext.load_cert_chain(keyfile=data_server_ssl_key_path, certfile=data_server_ssl_cert_path)
+        httpd.socket = sslcontext.wrap_socket(httpd.socket, server_side=True)
     print(f'serve_files {datetime.datetime.utcnow().isoformat()} Starting server on port {portno}')
     httpd.serve_forever()
 
