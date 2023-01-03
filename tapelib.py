@@ -398,8 +398,8 @@ def opendefault():
 ############# URL handling routines ########################
 _cached_nodename = None
 def nodename():
-    """return a name to be used in URLs"""
-    return "data1"
+    """return a name to be used in URLs. Warning:hardcoded dataserver rebus."""
+    return "rebus"
 
 
 if 'eiscat-raid' not in urllib.parse.uses_netloc:
